@@ -48,6 +48,11 @@ class PlayerViewModel(val player: Player) : ViewModel() {
                 delay(1.seconds)
             }
         }
+        if (player.isPlaying) {
+            updateCurrentSong(player.mediaMetadata)
+            updateUpNext()
+            _playState.value = PlayState.Playing
+        }
     }
 
     fun addPlaylistItem(song: Playlist.Song) {
@@ -79,6 +84,15 @@ class PlayerViewModel(val player: Player) : ViewModel() {
         }
     }
 
+    private fun updateCurrentSong(meta: MediaMetadata) = meta.run {
+        _currentSong.value = CurrentSong(
+            title = title?.toString() ?: "unknown title",
+            categories = extras?.getStringArrayList(MUSIC_METADATA_CATEGORIES)
+                ?: ArrayList(),
+            thumbNailUri = extras?.getString(MUSIC_METADATA_THUMBNAIL_ID)?.let(Uri::parse)
+        )
+    }
+
     private fun updateUpNext() {
         _nextUp.value =
             (player.currentMediaItemIndex..<player.mediaItemCount)
@@ -104,13 +118,8 @@ class PlayerViewModel(val player: Player) : ViewModel() {
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            viewModel._currentSong.value = mediaItem?.mediaMetadata?.run {
-                CurrentSong(
-                    title = title?.toString() ?: "unknown title",
-                    categories = extras?.getStringArrayList(MUSIC_METADATA_CATEGORIES)
-                        ?: ArrayList(),
-                    thumbNailUri = extras?.getString(MUSIC_METADATA_THUMBNAIL_ID)?.let(Uri::parse)
-                )
+            mediaItem?.mediaMetadata?.run {
+                viewModel.updateCurrentSong(this)
             }
             viewModel.updateUpNext()
         }

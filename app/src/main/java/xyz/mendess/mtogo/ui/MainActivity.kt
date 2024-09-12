@@ -1,5 +1,6 @@
 package xyz.mendess.mtogo.ui
 
+import android.content.ComponentName
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,22 +23,48 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
+import kotlinx.coroutines.flow.MutableStateFlow
 import xyz.mendess.mtogo.models.PlayerViewModel
 import xyz.mendess.mtogo.models.PlaylistViewModel
+import xyz.mendess.mtogo.services.MService
 import xyz.mendess.mtogo.ui.theme.MToGoTheme
 
 class MainActivity : ComponentActivity() {
     private val playlistViewModel: PlaylistViewModel by viewModels()
-    private val playerViewModel: PlayerViewModel by lazy {
-        PlayerViewModel(ExoPlayer.Builder(this).build())
-    }
+    private val playerViewModel: MutableStateFlow<PlayerViewModel?> = MutableStateFlow(
+        null
+    )
+    private var controllerFuture: ListenableFuture<MediaController>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            Screen(playlistViewModel, playerViewModel)
+            val playerViewModel by this@MainActivity.playerViewModel.collectAsStateWithLifecycle()
+            when (val vm = playerViewModel) {
+                null -> {}
+                vm -> Screen(playlistViewModel, vm)
+            }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val sessionToken = SessionToken(this, ComponentName(this, MService::class.java))
+        controllerFuture = MediaController.Builder(this, sessionToken).buildAsync().apply {
+            addListener({
+                playerViewModel.value = PlayerViewModel(get())
+            }, MoreExecutors.directExecutor())
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        controllerFuture?.apply(MediaController::releaseFuture)
     }
 }
 

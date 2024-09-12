@@ -60,6 +60,7 @@ dependencies {
     implementation(libs.androidx.material3)
 
     implementation("androidx.compose.material:material:1.7.1")
+    implementation(libs.androidx.media3.session)
 
     val lifecycleVersion = "2.8.5"
     implementation("androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion")

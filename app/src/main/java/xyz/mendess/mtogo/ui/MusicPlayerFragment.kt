@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.example.mtogo.R
+import com.mendess.mtogo.R
 import xyz.mendess.mtogo.models.CurrentSong
 import xyz.mendess.mtogo.models.PlayState
 import xyz.mendess.mtogo.models.PlayerViewModel
