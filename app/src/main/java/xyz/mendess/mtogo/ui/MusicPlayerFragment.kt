@@ -80,7 +80,7 @@ fun CurrentSongScreen(currentSong: CurrentSong?, modifier: Modifier = Modifier) 
         ) {
             when (val thumb = currentSong?.thumbNailUri) {
                 null -> Image(
-                    painter = painterResource(R.drawable.default_disk_mc_11),
+                    painter = painterResource(R.drawable.default_disk_mc_11_white_outline),
                     contentDescription = "No album art"
                 )
 
