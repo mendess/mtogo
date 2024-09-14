@@ -1,6 +1,8 @@
 package xyz.mendess.mtogo.models
 
 import android.net.Uri
+import android.os.Parcel
+import android.os.Parcelable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,8 +67,6 @@ class PlaylistViewModel(default: List<Playlist.Song> = emptyList()) : ViewModel(
             }
         }
     }
-
-
 }
 
 data class Playlist(val songs: List<Song>) {
@@ -80,7 +80,7 @@ data class Playlist(val songs: List<Song>) {
                         title = fields.getOrNull(0) ?: return@c null,
                         id = VideoId.fromUrl(fields.getOrNull(1) ?: return@c null),
                         duration = fields.getOrNull(2)?.toLong() ?: return@c null,
-                        categories = fields.slice(3..<fields.size)
+                        categories = fields.slice(3..<fields.size).sorted()
                     )
                 }
                 .reversed()
@@ -105,16 +105,34 @@ data class Playlist(val songs: List<Song>) {
     )
 
     @JvmInline
-    value class VideoId(private val id: String) {
+    value class VideoId(private val id: String): Parcelable {
+        constructor(parcel: Parcel) : this(parcel.readString()!!)
+
         fun toAudioUri(): Uri =
             Uri.parse("https://mendess.xyz/api/v1/playlist/audio/${id}")
 
         fun toThumbnailUri(): Uri =
             Uri.parse("https://mendess.xyz/api/v1/playlist/thumb/${id}")
 
-        companion object {
+        override fun writeToParcel(parcel: Parcel, flags: Int) {
+            parcel.writeString(id)
+        }
+
+        override fun describeContents(): Int {
+            return 0
+        }
+
+        companion object CREATOR : Parcelable.Creator<VideoId> {
             fun fromUrl(s: String): VideoId {
                 return VideoId(Uri.parse(s).path!!.trimStart('/'))
+            }
+
+            override fun createFromParcel(parcel: Parcel): VideoId {
+                return VideoId(parcel)
+            }
+
+            override fun newArray(size: Int): Array<VideoId?> {
+                return arrayOfNulls(size)
             }
         }
     }

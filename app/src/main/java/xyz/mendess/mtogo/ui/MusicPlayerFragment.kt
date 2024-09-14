@@ -1,3 +1,5 @@
+@file:Suppress("NAME_SHADOWING")
+
 package xyz.mendess.mtogo.ui
 
 import android.text.format.DateUtils
@@ -7,15 +9,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.Divider
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -25,80 +32,129 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import com.mendess.mtogo.R
 import xyz.mendess.mtogo.models.CurrentSong
 import xyz.mendess.mtogo.models.PlayState
 import xyz.mendess.mtogo.models.PlayerViewModel
+import xyz.mendess.mtogo.util.AutoSizeText
+import xyz.mendess.mtogo.util.identity
+import xyz.mendess.mtogo.util.toInt
 
 @Composable
-fun PlayerScreen(viewModel: PlayerViewModel, modifier: Modifier = Modifier) {
+fun PlayerScreen(viewModel: PlayerViewModel, darkTheme: Boolean, modifier: Modifier = Modifier) {
     val currentSong by viewModel.currentSong.collectAsStateWithLifecycle()
     val playState by viewModel.playState.collectAsStateWithLifecycle()
     val position by viewModel.positionMs.collectAsStateWithLifecycle()
     val duration by viewModel.totalDurationMs.collectAsStateWithLifecycle()
     val nextUp by viewModel.nextUp.collectAsStateWithLifecycle()
+    StateLessPlayerScreen(
+        currentSong,
+        playState,
+        MediaButtonsVtable(viewModel.player),
+        position,
+        duration,
+        nextUp,
+        darkTheme,
+        modifier = modifier
+    )
+}
 
+data class MediaButtonsVtable(
+    val prev: () -> Unit = {},
+    val play: () -> Unit = {},
+    val pause: () -> Unit = {},
+    val next: () -> Unit = {},
+) {
+    constructor(player: Player) : this(
+        prev = player::seekToPreviousMediaItem,
+        play = player::play,
+        pause = player::pause,
+        next = player::seekToNextMediaItem
+    )
+}
+
+@Composable
+private fun StateLessPlayerScreen(
+    currentSong: CurrentSong?,
+    playState: PlayState,
+    mediaButtonsVtable: MediaButtonsVtable,
+    position: Long,
+    duration: Long?,
+    nextUp: List<String>,
+    darkTheme: Boolean,
+    modifier: Modifier = Modifier
+) {
     val progress = duration?.let { (position.toFloat() / it.toFloat()) }
+
     Column(modifier = modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        CurrentSongScreen(
-            currentSong,
-            modifier,
-        )
-        MediaControls(
-            playState,
-            modifier = modifier,
-            prev = viewModel.player::seekToPreviousMediaItem,
-            play = viewModel.player::play,
-            pause = viewModel.player::pause,
-            next = viewModel.player::seekToNextMediaItem
-        )
+        CurrentSongScreen(currentSong, darkTheme, modifier)
+        Spacer(modifier = modifier.height(10.dp))
+        MediaControls(playState, modifier = modifier, vtable = mediaButtonsVtable)
         ProgressBar(progress, position, duration, modifier = modifier)
+        Categories(currentSong?.categories ?: emptyList())
         NextUp(nextUp, modifier = modifier)
     }
 }
 
 @Composable
-fun CurrentSongScreen(currentSong: CurrentSong?, modifier: Modifier = Modifier) {
+private fun CurrentSongScreen(
+    currentSong: CurrentSong?,
+    darkTheme: Boolean,
+    modifier: Modifier = Modifier
+) {
     Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .fillMaxHeight(fraction = 0.5f)
-            .padding(vertical = 50.dp)
+            .fillMaxHeight(fraction = 0.4f)
+            .padding(top = 5.dp),
     ) {
         Box(
             modifier = modifier
-                .fillMaxHeight(fraction = 0.7f)
-                .fillMaxWidth(),
+                .fillMaxHeight(fraction = 0.1f)
+                .padding(bottom = 5.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            AutoSizeText(
+                text = currentSong?.title ?: "No song",
+                modifier = modifier,
+                maxLines = 1,
+                fontWeight = FontWeight.ExtraBold,
+                alignment = Alignment.Center,
+            )
+        }
+        Box(
+            modifier = modifier.fillMaxWidth(fraction = 0.9f),
             contentAlignment = Alignment.Center
         ) {
             when (val thumb = currentSong?.thumbNailUri) {
-                null -> Image(
-                    painter = painterResource(R.drawable.default_disk_mc_11_white_outline),
-                    contentDescription = "No album art"
-                )
+                null -> {
+                    val default = listOf(
+                        R.drawable.default_disk_mc_11,
+                        R.drawable.default_disk_mc_11_white_outline
+                    )[darkTheme.toInt()]
+                    Image(
+                        painter = painterResource(default),
+                        contentDescription = "No album art"
+                    )
+                }
 
                 else -> AsyncImage(
                     model = thumb.toString(),
+                    contentScale = ContentScale.Crop,
                     contentDescription = "Album/Video art"
                 )
             }
-        }
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-            Text(
-                text = currentSong?.title ?: "No song",
-                modifier = modifier,
-                textAlign = TextAlign.Center,
-                fontSize = 4.em,
-                softWrap = true,
-                fontWeight = FontWeight.ExtraBold
-            )
         }
     }
 }
@@ -107,10 +163,7 @@ fun CurrentSongScreen(currentSong: CurrentSong?, modifier: Modifier = Modifier) 
 fun MediaControls(
     playState: PlayState,
     modifier: Modifier = Modifier,
-    prev: () -> Unit,
-    play: () -> Unit,
-    pause: () -> Unit,
-    next: () -> Unit,
+    vtable: MediaButtonsVtable,
 ) {
     Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
         val modifier = modifier.padding(10.dp)
@@ -118,7 +171,8 @@ fun MediaControls(
             painterResource(R.drawable.baseline_skip_previous_24),
             "previous",
             modifier,
-            prev,
+            vtable.prev,
+            enabled = playState != PlayState.Buffering
         )
 
         when (playState) {
@@ -126,14 +180,20 @@ fun MediaControls(
                 painterResource(R.drawable.baseline_pause_24),
                 "pause",
                 modifier,
-                pause,
+                vtable.pause,
             )
 
-            PlayState.Paused -> MediaButton(
+            PlayState.Paused, PlayState.Ready -> MediaButton(
                 painterResource(R.drawable.baseline_play_arrow_24),
                 "play",
                 modifier,
-                play,
+                vtable.play,
+            )
+
+            PlayState.Buffering -> CircularProgressIndicator(
+                modifier = modifier.size(70.dp),
+                color = MaterialTheme.colorScheme.secondary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
         }
 
@@ -141,8 +201,23 @@ fun MediaControls(
             painterResource(R.drawable.baseline_skip_next_24),
             "next",
             modifier,
-            next,
+            vtable.next,
+            enabled = playState != PlayState.Buffering
         )
+    }
+}
+
+@Composable
+fun Categories(categories: List<String>, modifier: Modifier = Modifier) {
+    LazyRow(modifier = modifier) {
+        items(categories, key = ::identity) { cat ->
+            Text(
+                text = cat,
+                fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.Light,
+                modifier = modifier.padding(horizontal = 10.dp)
+            )
+        }
     }
 }
 
@@ -151,12 +226,14 @@ fun MediaButton(
     painter: Painter,
     contentDescription: String,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean = true,
 ) {
     Button(
         onClick = onClick,
         modifier = modifier.size(70.dp),
         shape = CircleShape,
+        enabled = enabled,
         contentPadding = PaddingValues(2.dp),
     ) {
         Icon(
@@ -210,7 +287,9 @@ fun NextUp(list: List<String>, modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Divider(
-            modifier = modifier.fillMaxWidth(fraction = 0.8f).padding(vertical = 10.dp),
+            modifier = modifier
+                .fillMaxWidth(fraction = 0.8f)
+                .padding(vertical = 10.dp),
             thickness = 5.dp,
             color = MaterialTheme.colorScheme.secondary
         )
@@ -230,22 +309,16 @@ fun NextUp(list: List<String>, modifier: Modifier = Modifier) {
 @Preview
 @Composable
 fun PreviewPlayerScreen() {
-    fun noop() {}
     val currentSong =
         CurrentSong(title = "No Music", thumbNailUri = null, categories = ArrayList())
     val playState = PlayState.Playing
-    Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        CurrentSongScreen(
-            currentSong,
-        )
-        MediaControls(
-            playState,
-            prev = ::noop,
-            play = ::noop,
-            pause = ::noop,
-            next = ::noop,
-        )
-        ProgressBar(progress = 0.3f, position = 30, duration = 500)
-        NextUp(listOf("first", "second", "third"))
-    }
+    StateLessPlayerScreen(
+        currentSong,
+        playState,
+        MediaButtonsVtable(),
+        position = 30,
+        duration = 500,
+        listOf("first", "second", "third"),
+        darkTheme = true,
+    )
 }

@@ -84,7 +84,12 @@ fun Screen(
                 ) {
                     Text("m to go", textAlign = TextAlign.Center)
                 }
-                TabScreen(playlistViewModel, playerViewModel, Modifier.padding(innerPadding))
+                TabScreen(
+                    playlistViewModel,
+                    playerViewModel,
+                    darkTheme,
+                    Modifier.padding(innerPadding)
+                )
             }
         }
     }
@@ -94,6 +99,7 @@ fun Screen(
 fun TabScreen(
     playlistViewModel: PlaylistViewModel,
     playerViewModel: PlayerViewModel,
+    darkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
     var tabIndex by remember { mutableIntStateOf(0) }
@@ -110,7 +116,7 @@ fun TabScreen(
             }
         }
         when (tabIndex) {
-            0 -> PlayerScreen(playerViewModel)
+            0 -> PlayerScreen(playerViewModel, darkTheme)
             1 -> Text(tabs[tabIndex])
             2 -> PlaylistScreen(playlistViewModel, playerViewModel, modifier)
             3 -> CategoriesScreen(playlistViewModel, playerViewModel, modifier)
@@ -118,22 +124,19 @@ fun TabScreen(
     }
 }
 
-
 //@Preview(showBackground = true)
 //@Composable
 //fun ScreenPreview() {
 //    val playlistViewModel = PlaylistViewModel(
-//        listOf(
-//            "Birds of a Feather",
-//            "Signal 30",
-//            "Rex Orange County - Best Friend"
-//        ).map { Playlist.Song(title = it, url = "", categories = listOf()) }
+//        listOf("Birds of a Feather", "Signal 30", "Rex Orange County - Best Friend").map {
+//            Playlist.Song(
+//                title = it,
+//                id = Playlist.VideoId("aksjkdlas"),
+//                categories = ArrayList(),
+//                duration = 50
+//            )
+//        }
 //    )
 //
-//    val playerViewModel = PlayerViewModel(
-//        savedStateHandle = SavedStateHandle(),
-//        player = object: Player
-//    )
-//
-//    Screen(playlistViewModel, darkTheme = true)
+//    Screen(playlistViewModel)
 //}

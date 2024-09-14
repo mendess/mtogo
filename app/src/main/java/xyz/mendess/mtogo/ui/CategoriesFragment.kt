@@ -46,8 +46,9 @@ private fun CategoriesContent(
         items(list.categories) { category ->
             Button(
                 onClick = {
-                    category.second.asIterable().shuffled()
-                        .forEach { playerViewModel.addPlaylistItem(it) }
+                    playerViewModel.queuePlaylistItems(
+                        category.second.asIterable().shuffled().asSequence()
+                    )
                 },
                 modifier = modifier.padding(5.dp)
             ) {
