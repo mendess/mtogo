@@ -5,28 +5,17 @@ import android.os.Parcel
 import android.os.Parcelable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import okhttp3.ResponseBody
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.create
-import retrofit2.http.GET
+import okhttp3.internal.closeQuietly
 
-const val PLAYLIST_URL = "https://raw.githubusercontent.com"
-
-interface FilhaDaPutaDaInterface {
-    @GET("/mendess/spell-book/master/runes/m/playlist")
-    fun download(): Call<ResponseBody>
-}
-
-private val playlistDownload = Retrofit.Builder()
-    .baseUrl(PLAYLIST_URL)
-    .build()
-    .create<FilhaDaPutaDaInterface>()
+const val PLAYLIST_URL =
+    "https://raw.githubusercontent.com/mendess/spell-book/master/runes/m/playlist"
 
 sealed interface PlaylistLoadingState {
     data object Loading : PlaylistLoadingState
@@ -50,20 +39,16 @@ class PlaylistViewModel(default: List<Playlist.Song> = emptyList()) : ViewModel(
     init {
         if (playlistFlow.value is PlaylistLoadingState.Loading) {
             viewModelScope.launch {
-                playlistDownload.download().enqueue(object : Callback<ResponseBody> {
-                    override fun onResponse(
-                        call: Call<ResponseBody>,
-                        response: Response<ResponseBody>
-                    ) {
-                        _playlistFlow.value = PlaylistLoadingState.Success(
-                            Playlist.fromStr(response.body()?.string() ?: "")
-                        )
-                    }
-
-                    override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                        _playlistFlow.value = PlaylistLoadingState.Error(t)
-                    }
-                })
+                val client = HttpClient(CIO)
+                _playlistFlow.value = try {
+                    PlaylistLoadingState.Success(
+                        Playlist.fromStr(client.get(PLAYLIST_URL).bodyAsText())
+                    )
+                } catch (e: Exception) {
+                    PlaylistLoadingState.Error(e)
+                } finally {
+                    client.closeQuietly()
+                }
             }
         }
     }
@@ -105,7 +90,7 @@ data class Playlist(val songs: List<Song>) {
     )
 
     @JvmInline
-    value class VideoId(private val id: String): Parcelable {
+    value class VideoId(private val id: String) : Parcelable {
         constructor(parcel: Parcel) : this(parcel.readString()!!)
 
         fun toAudioUri(): Uri =

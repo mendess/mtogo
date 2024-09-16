@@ -74,11 +74,9 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-dash:$exoplayerVersion")
     implementation("androidx.media3:media3-ui:$exoplayerVersion")
 
-    val retrofitVersion = "2.9.0"
-    // Retrofit
-    implementation("com.squareup.retrofit2:retrofit:$retrofitVersion")
-    // Retrofit with Scalar Converter
-    implementation("com.squareup.retrofit2:converter-scalars:$retrofitVersion")
+    val ktorVersion = "2.3.12"
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-cio:$ktorVersion")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
