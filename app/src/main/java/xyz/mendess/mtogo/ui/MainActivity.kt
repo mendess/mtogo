@@ -30,31 +30,33 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.flow.MutableStateFlow
-import xyz.mendess.mtogo.models.BackendViewModel
-import xyz.mendess.mtogo.models.PlayerViewModel
-import xyz.mendess.mtogo.models.PlaylistViewModel
 import xyz.mendess.mtogo.services.MService
 import xyz.mendess.mtogo.ui.theme.MToGoTheme
+import xyz.mendess.mtogo.util.MPlayer
+import xyz.mendess.mtogo.viewmodels.BackendViewModel
+import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 class MainActivity : ComponentActivity() {
     private val playlistViewModel: PlaylistViewModel by viewModels()
-    private val playerViewModel: MutableStateFlow<PlayerViewModel?> = MutableStateFlow(
+    private val backendViewModel: BackendViewModel by viewModels { BackendViewModel.Factory }
+
+    private val MPlayer: MutableStateFlow<MPlayer?> = MutableStateFlow(
         null
     )
-    private val backendViewModel: BackendViewModel by lazy { BackendViewModel(this.dataStore) }
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val playerViewModel by this@MainActivity.playerViewModel.collectAsStateWithLifecycle()
+            val playerViewModel by this@MainActivity.MPlayer.collectAsStateWithLifecycle()
             when (val playerViewModel = playerViewModel) {
                 null -> {}
                 playerViewModel -> Screen(playlistViewModel, playerViewModel, backendViewModel)
@@ -67,21 +69,22 @@ class MainActivity : ComponentActivity() {
         val sessionToken = SessionToken(this, ComponentName(this, MService::class.java))
         controllerFuture = MediaController.Builder(this, sessionToken).buildAsync().apply {
             addListener({
-                playerViewModel.value = PlayerViewModel(get())
+                MPlayer.value = MPlayer(get(), this@MainActivity.lifecycleScope)
             }, MoreExecutors.directExecutor())
         }
     }
 
     override fun onStop() {
-        super.onStop()
+        MPlayer.value?.drop()
         controllerFuture?.apply(MediaController::releaseFuture)
+        super.onStop()
     }
 }
 
 @Composable
 fun Screen(
     playlistViewModel: PlaylistViewModel,
-    playerViewModel: PlayerViewModel,
+    mplayer: MPlayer,
     backendViewModel: BackendViewModel,
     modifier: Modifier = Modifier,
     darkTheme: Boolean = isSystemInDarkTheme()
@@ -97,7 +100,7 @@ fun Screen(
                 }
                 TabScreen(
                     playlistViewModel,
-                    playerViewModel,
+                    mplayer,
                     backendViewModel,
                     darkTheme,
                     Modifier.padding(innerPadding)
@@ -110,7 +113,7 @@ fun Screen(
 @Composable
 fun TabScreen(
     playlistViewModel: PlaylistViewModel,
-    playerViewModel: PlayerViewModel,
+    MPlayer: MPlayer,
     backendViewModel: BackendViewModel,
     darkTheme: Boolean,
     modifier: Modifier = Modifier
@@ -129,9 +132,9 @@ fun TabScreen(
             }
         }
         when (tabIndex) {
-            0 -> PlayerScreen(playerViewModel, darkTheme, modifier)
+            0 -> PlayerScreen(MPlayer, darkTheme, modifier)
             1 -> Text(tabs[tabIndex])
-            2 -> PlaylistScreen(playlistViewModel, playerViewModel, modifier)
+            2 -> PlaylistScreen(playlistViewModel, MPlayer, modifier)
             3 -> SettingsScreen(backendViewModel, modifier)
         }
     }

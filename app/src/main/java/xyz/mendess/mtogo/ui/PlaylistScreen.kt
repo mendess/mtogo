@@ -24,15 +24,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mendess.mtogo.R
-import xyz.mendess.mtogo.models.PlayerViewModel
-import xyz.mendess.mtogo.models.Playlist
-import xyz.mendess.mtogo.models.PlaylistLoadingState
-import xyz.mendess.mtogo.models.PlaylistViewModel
+import xyz.mendess.mtogo.util.MPlayer
+import xyz.mendess.mtogo.viewmodels.Playlist
+import xyz.mendess.mtogo.viewmodels.PlaylistLoadingState
+import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 
 @Composable
 fun PlaylistScreen(
     playlistViewModel: PlaylistViewModel,
-    playerViewModel: PlayerViewModel,
+    mplayer: MPlayer,
     modifier: Modifier = Modifier
 ) {
     val list by playlistViewModel.playlistFlow.collectAsState()
@@ -41,7 +41,7 @@ fun PlaylistScreen(
             Text("loading playlist....", modifier = modifier)
 
         is PlaylistLoadingState.Success ->
-            PlaylistTabsContent(list.playlist, playerViewModel, modifier = modifier)
+            PlaylistTabsContent(list.playlist, mplayer, modifier = modifier)
 
         is PlaylistLoadingState.Error ->
             Text("failed to get list: $list", modifier = modifier)
@@ -61,7 +61,7 @@ enum class Mode {
 @Composable
 private fun PlaylistTabsContent(
     list: Playlist,
-    playerViewModel: PlayerViewModel,
+    mplayer: MPlayer,
     modifier: Modifier = Modifier
 ) {
     var mode by remember { mutableStateOf(Mode.Songs) }
@@ -72,7 +72,7 @@ private fun PlaylistTabsContent(
                 colors = ButtonDefaults.buttonColors()
                     .copy(containerColor = MaterialTheme.colorScheme.secondary),
                 onClick = {
-                    playerViewModel.queuePlaylistItems(list.songs.shuffled().asSequence())
+                    mplayer.queuePlaylistItems(list.songs.shuffled().asSequence())
                 }) {
                 Icon(
                     painter = painterResource(R.drawable.baseline_shuffle_24),
@@ -88,8 +88,8 @@ private fun PlaylistTabsContent(
             }
         }
         when (mode) {
-            Mode.Songs -> PlaylistContent(list, playerViewModel, modifier)
-            Mode.Categories -> CategoriesContent(list, playerViewModel, modifier)
+            Mode.Songs -> PlaylistContent(list, mplayer, modifier)
+            Mode.Categories -> CategoriesContent(list, mplayer, modifier)
         }
     }
 }
@@ -97,7 +97,7 @@ private fun PlaylistTabsContent(
 @Composable
 private fun PlaylistContent(
     list: Playlist,
-    playerViewModel: PlayerViewModel,
+    mplayer: MPlayer,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -105,7 +105,7 @@ private fun PlaylistContent(
         LazyColumn(modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.Center) {
             items(list.songs, key = { it.id }) { song ->
                 Button(
-                    onClick = { playerViewModel.queuePlaylistItems(sequenceOf(song)) },
+                    onClick = { mplayer.queuePlaylistItems(sequenceOf(song)) },
                     modifier = modifier.padding(2.dp)
                 ) {
                     Text(
@@ -124,14 +124,14 @@ private fun PlaylistContent(
 @Composable
 private fun CategoriesContent(
     list: Playlist,
-    playerViewModel: PlayerViewModel,
+    mplayer: MPlayer,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(modifier.padding(20.dp), verticalArrangement = Arrangement.Center) {
         items(list.categories) { category ->
             Button(
                 onClick = {
-                    playerViewModel.queuePlaylistItems(
+                    mplayer.queuePlaylistItems(
                         category.second.asIterable().shuffled().asSequence()
                     )
                 },

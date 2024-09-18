@@ -81,6 +81,9 @@ dependencies {
     val datastorePreferences = "1.1.1"
     implementation("androidx.datastore:datastore-preferences:$datastorePreferences")
 
+    val socketIoVersion = "2.0.0"
+    implementation ("io.socket:socket.io-client:$socketIoVersion")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

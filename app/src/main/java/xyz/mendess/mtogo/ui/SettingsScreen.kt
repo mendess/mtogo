@@ -30,9 +30,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mendess.mtogo.R
-import xyz.mendess.mtogo.models.BackendViewModel
-import xyz.mendess.mtogo.models.Credentials
-import xyz.mendess.mtogo.models.StoredCredentialsState
+import xyz.mendess.mtogo.viewmodels.BackendViewModel
+import xyz.mendess.mtogo.viewmodels.Credentials
+import xyz.mendess.mtogo.viewmodels.StoredCredentialsState
 
 @Composable
 fun SettingsScreen(viewModel: BackendViewModel, modifier: Modifier) {
@@ -67,7 +67,11 @@ fun ConnectScreen(
         horizontalArrangement = Arrangement.SpaceAround,
         modifier = modifier.fillMaxWidth()
     ) {
-        val domain = remember { mutableStateOf<UriTextFieldContent?>(currentCredentials?.uri?.let(UriTextFieldContent::Uri)) }
+        val domain = remember {
+            mutableStateOf<UriTextFieldContent?>(
+                currentCredentials?.uri?.let(UriTextFieldContent::Uri)
+            )
+        }
         val token = remember { mutableStateOf(currentCredentials?.token) }
 
         Column {

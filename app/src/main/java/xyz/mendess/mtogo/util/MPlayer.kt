@@ -1,27 +1,26 @@
-package xyz.mendess.mtogo.models
+package xyz.mendess.mtogo.util
 
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import xyz.mendess.mtogo.util.Mutex
+import xyz.mendess.mtogo.viewmodels.Playlist
 import kotlin.time.Duration.Companion.seconds
 
 private const val MUSIC_METADATA_CATEGORIES = "cat"
 private const val MUSIC_METADATA_THUMBNAIL_ID = "thumb"
 private const val MUSIC_METADATA_DURATION = "dur"
 
-class PlayerViewModel(val player: Player) : ViewModel() {
+class MPlayer(private val player: Player, private val scope: CoroutineScope) : Player by player {
     private val _currentSong: MutableStateFlow<CurrentSong?> = MutableStateFlow(null)
     val currentSong = _currentSong.asStateFlow()
 
@@ -42,7 +41,7 @@ class PlayerViewModel(val player: Player) : ViewModel() {
     init {
         player.prepare()
         player.addListener(Listener(this))
-        viewModelScope.launch {
+        scope.launch {
             while (true) {
                 _totalDurationMs.value = when (val duration = player.duration) {
                     C.TIME_UNSET -> null
@@ -60,7 +59,7 @@ class PlayerViewModel(val player: Player) : ViewModel() {
     }
 
     fun queuePlaylistItems(songs: Sequence<Playlist.Song>) {
-        viewModelScope.launch {
+        scope.launch {
             queueMediaItems(
                 songs.map { song ->
                     val uri = song.id.toAudioUri()
@@ -94,13 +93,13 @@ class PlayerViewModel(val player: Player) : ViewModel() {
         mediaItems.forEach { mediaItem ->
             player.addMediaItem(mediaItem)
             val queuedPosition = player.mediaItemCount - 1
-            Log.d("PlayerViewModel", "added video uri: $mediaItem")
+            Log.d("MPlayer", "added video uri: $mediaItem")
             if (move) {
                 lastQueue.write { ref ->
                     val moveTo = (ref.t ?: player.currentMediaItemIndex) + 1
                     player.moveMediaItem(queuedPosition, moveTo)
                     Log.d(
-                        "PlayerViewModel",
+                        "MPlayer",
                         "Moved from $queuedPosition to $moveTo [current: ${player.currentMediaItemIndex}]"
                     )
                     ref.t = moveTo
@@ -132,18 +131,17 @@ class PlayerViewModel(val player: Player) : ViewModel() {
                 .map { it.mediaMetadata.title?.toString() ?: "No title" }
                 .toList()
                 .also {
-                    Log.d("PlayerViewModel", "updating up next to: $it")
+                    Log.d("MPlayer", "updating up next to: $it")
                 }
     }
 
-    override fun onCleared() {
-        super.onCleared()
+    fun drop() {
         player.release()
     }
 
-    private class Listener(val viewModel: PlayerViewModel) : Player.Listener {
+    private class Listener(val viewModel: MPlayer) : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            Log.d("PlayerViewModel", "onIsPlayingChanged: $isPlaying")
+            Log.d("MPlayer", "onIsPlayingChanged: $isPlaying")
             viewModel._playState.update { s ->
                 if (s != PlayState.Buffering) {
                     if (isPlaying) PlayState.Playing else PlayState.Paused
@@ -156,14 +154,15 @@ class PlayerViewModel(val player: Player) : ViewModel() {
         override fun onPlaybackStateChanged(playbackState: Int) {
             super.onPlaybackStateChanged(playbackState)
             when (playbackState) {
-                Player.STATE_ENDED -> Log.d("PlayerViewModel", "STATE: ended")
-                Player.STATE_IDLE -> Log.d("PlayerViewModel", "STATE: idle")
+                Player.STATE_ENDED -> Log.d("MPlayer", "STATE: ended")
+                Player.STATE_IDLE -> Log.d("MPlayer", "STATE: idle")
                 Player.STATE_READY -> {
-                    Log.d("PlayerViewModel", "STATE: ready")
+                    Log.d("MPlayer", "STATE: ready")
                     viewModel._playState.value = PlayState.Ready
                 }
+
                 Player.STATE_BUFFERING -> {
-                    Log.d("PlayerViewModel", "STATE: buffering")
+                    Log.d("MPlayer", "STATE: buffering")
                     viewModel._playState.value = PlayState.Buffering
                 }
             }
@@ -174,7 +173,7 @@ class PlayerViewModel(val player: Player) : ViewModel() {
                 viewModel.updateCurrentSong(this)
             }
             viewModel.updateUpNext()
-            viewModel.viewModelScope.launch {
+            viewModel.scope.launch {
                 viewModel.lastQueue.write { ref ->
                     if (ref.t?.let { it < viewModel.player.currentMediaItemIndex } == true) {
                         ref.t = null

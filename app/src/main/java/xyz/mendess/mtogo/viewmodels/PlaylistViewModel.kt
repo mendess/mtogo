@@ -1,4 +1,4 @@
-package xyz.mendess.mtogo.models
+package xyz.mendess.mtogo.viewmodels
 
 import android.net.Uri
 import android.os.Parcel

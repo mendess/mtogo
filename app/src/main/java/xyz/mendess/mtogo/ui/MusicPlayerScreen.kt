@@ -44,24 +44,24 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import com.mendess.mtogo.R
-import xyz.mendess.mtogo.models.CurrentSong
-import xyz.mendess.mtogo.models.PlayState
-import xyz.mendess.mtogo.models.PlayerViewModel
 import xyz.mendess.mtogo.util.AutoSizeText
+import xyz.mendess.mtogo.util.CurrentSong
+import xyz.mendess.mtogo.util.MPlayer
+import xyz.mendess.mtogo.util.PlayState
 import xyz.mendess.mtogo.util.identity
 import xyz.mendess.mtogo.util.toInt
 
 @Composable
-fun PlayerScreen(viewModel: PlayerViewModel, darkTheme: Boolean, modifier: Modifier = Modifier) {
-    val currentSong by viewModel.currentSong.collectAsStateWithLifecycle()
-    val playState by viewModel.playState.collectAsStateWithLifecycle()
-    val position by viewModel.positionMs.collectAsStateWithLifecycle()
-    val duration by viewModel.totalDurationMs.collectAsStateWithLifecycle()
-    val nextUp by viewModel.nextUp.collectAsStateWithLifecycle()
+fun PlayerScreen(mplayer: MPlayer, darkTheme: Boolean, modifier: Modifier = Modifier) {
+    val currentSong by mplayer.currentSong.collectAsStateWithLifecycle()
+    val playState by mplayer.playState.collectAsStateWithLifecycle()
+    val position by mplayer.positionMs.collectAsStateWithLifecycle()
+    val duration by mplayer.totalDurationMs.collectAsStateWithLifecycle()
+    val nextUp by mplayer.nextUp.collectAsStateWithLifecycle()
     PlayerContent(
         currentSong,
         playState,
-        MediaButtonsVtable(viewModel.player),
+        MediaButtonsVtable(mplayer),
         position,
         duration,
         nextUp,
