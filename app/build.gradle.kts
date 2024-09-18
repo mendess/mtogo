@@ -78,6 +78,9 @@ dependencies {
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
 
+    val datastorePreferences = "1.1.1"
+    implementation("androidx.datastore:datastore-preferences:$datastorePreferences")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

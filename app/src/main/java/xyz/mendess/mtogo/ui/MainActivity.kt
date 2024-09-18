@@ -1,6 +1,9 @@
+@file:Suppress("NAME_SHADOWING")
+
 package xyz.mendess.mtogo.ui
 
 import android.content.ComponentName
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,31 +26,38 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.flow.MutableStateFlow
+import xyz.mendess.mtogo.models.BackendViewModel
 import xyz.mendess.mtogo.models.PlayerViewModel
 import xyz.mendess.mtogo.models.PlaylistViewModel
 import xyz.mendess.mtogo.services.MService
 import xyz.mendess.mtogo.ui.theme.MToGoTheme
+
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 class MainActivity : ComponentActivity() {
     private val playlistViewModel: PlaylistViewModel by viewModels()
     private val playerViewModel: MutableStateFlow<PlayerViewModel?> = MutableStateFlow(
         null
     )
+    private val backendViewModel: BackendViewModel by lazy { BackendViewModel(this.dataStore) }
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             val playerViewModel by this@MainActivity.playerViewModel.collectAsStateWithLifecycle()
-            when (val vm = playerViewModel) {
+            when (val playerViewModel = playerViewModel) {
                 null -> {}
-                vm -> Screen(playlistViewModel, vm)
+                playerViewModel -> Screen(playlistViewModel, playerViewModel, backendViewModel)
             }
         }
     }
@@ -72,6 +82,7 @@ class MainActivity : ComponentActivity() {
 fun Screen(
     playlistViewModel: PlaylistViewModel,
     playerViewModel: PlayerViewModel,
+    backendViewModel: BackendViewModel,
     modifier: Modifier = Modifier,
     darkTheme: Boolean = isSystemInDarkTheme()
 ) {
@@ -87,6 +98,7 @@ fun Screen(
                 TabScreen(
                     playlistViewModel,
                     playerViewModel,
+                    backendViewModel,
                     darkTheme,
                     Modifier.padding(innerPadding)
                 )
@@ -99,14 +111,15 @@ fun Screen(
 fun TabScreen(
     playlistViewModel: PlaylistViewModel,
     playerViewModel: PlayerViewModel,
+    backendViewModel: BackendViewModel,
     darkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
-    var tabIndex by remember { mutableIntStateOf(0) }
+    var tabIndex by remember { mutableIntStateOf(3) }
 
-    val tabs = listOf("Music", "Queue", "Playlist", "Categories")
+    val tabs = listOf("Music", "Queue", "Playlist", "Settings")
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
         TabRow(selectedTabIndex = tabIndex, modifier = modifier) {
             tabs.forEachIndexed { index, title ->
                 Tab(text = { Text(title) },
@@ -116,10 +129,10 @@ fun TabScreen(
             }
         }
         when (tabIndex) {
-            0 -> PlayerScreen(playerViewModel, darkTheme)
+            0 -> PlayerScreen(playerViewModel, darkTheme, modifier)
             1 -> Text(tabs[tabIndex])
             2 -> PlaylistScreen(playlistViewModel, playerViewModel, modifier)
-            3 -> CategoriesScreen(playlistViewModel, playerViewModel, modifier)
+            3 -> SettingsScreen(backendViewModel, modifier)
         }
     }
 }

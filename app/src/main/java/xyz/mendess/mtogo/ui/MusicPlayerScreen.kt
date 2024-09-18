@@ -2,6 +2,7 @@
 
 package xyz.mendess.mtogo.ui
 
+//noinspection UsingMaterialAndMaterial3Libraries
 import android.text.format.DateUtils
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.Divider
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,7 +58,7 @@ fun PlayerScreen(viewModel: PlayerViewModel, darkTheme: Boolean, modifier: Modif
     val position by viewModel.positionMs.collectAsStateWithLifecycle()
     val duration by viewModel.totalDurationMs.collectAsStateWithLifecycle()
     val nextUp by viewModel.nextUp.collectAsStateWithLifecycle()
-    StateLessPlayerScreen(
+    PlayerContent(
         currentSong,
         playState,
         MediaButtonsVtable(viewModel.player),
@@ -85,7 +85,7 @@ data class MediaButtonsVtable(
 }
 
 @Composable
-private fun StateLessPlayerScreen(
+private fun PlayerContent(
     currentSong: CurrentSong?,
     playState: PlayState,
     mediaButtonsVtable: MediaButtonsVtable,
@@ -135,7 +135,7 @@ private fun CurrentSongScreen(
         }
         Box(
             modifier = modifier.fillMaxWidth(fraction = 0.9f),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             when (val thumb = currentSong?.thumbNailUri) {
                 null -> {
@@ -145,15 +145,18 @@ private fun CurrentSongScreen(
                     )[darkTheme.toInt()]
                     Image(
                         painter = painterResource(default),
-                        contentDescription = "No album art"
+                        contentDescription = "No album art",
+                        modifier = modifier,
                     )
                 }
 
-                else -> AsyncImage(
-                    model = thumb.toString(),
-                    contentScale = ContentScale.Crop,
-                    contentDescription = "Album/Video art"
-                )
+                else -> {
+                    AsyncImage(
+                        model = thumb.toString(),
+                        contentScale = ContentScale.Crop,
+                        contentDescription = "Album/Video art",
+                    )
+                }
             }
         }
     }
@@ -312,7 +315,7 @@ fun PreviewPlayerScreen() {
     val currentSong =
         CurrentSong(title = "No Music", thumbNailUri = null, categories = ArrayList())
     val playState = PlayState.Playing
-    StateLessPlayerScreen(
+    PlayerContent(
         currentSong,
         playState,
         MediaButtonsVtable(),
