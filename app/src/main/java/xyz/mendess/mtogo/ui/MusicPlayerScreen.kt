@@ -122,6 +122,7 @@ private fun CurrentSongScreen(
         Box(
             modifier = modifier
                 .fillMaxHeight(fraction = 0.1f)
+                .fillMaxWidth(fraction = 0.92f)
                 .padding(bottom = 5.dp),
             contentAlignment = Alignment.Center,
         ) {

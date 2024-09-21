@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
     private val playlistViewModel: PlaylistViewModel by viewModels()
     private val backendViewModel: BackendViewModel by viewModels { BackendViewModel.Factory }
 
-    private val MPlayer: MutableStateFlow<MPlayer?> = MutableStateFlow(
+    private val mplayer: MutableStateFlow<MPlayer?> = MutableStateFlow(
         null
     )
     private var controllerFuture: ListenableFuture<MediaController>? = null
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val playerViewModel by this@MainActivity.MPlayer.collectAsStateWithLifecycle()
+            val playerViewModel by this@MainActivity.mplayer.collectAsStateWithLifecycle()
             when (val playerViewModel = playerViewModel) {
                 null -> {}
                 playerViewModel -> Screen(playlistViewModel, playerViewModel, backendViewModel)
@@ -69,13 +69,13 @@ class MainActivity : ComponentActivity() {
         val sessionToken = SessionToken(this, ComponentName(this, MService::class.java))
         controllerFuture = MediaController.Builder(this, sessionToken).buildAsync().apply {
             addListener({
-                MPlayer.value = MPlayer(get(), this@MainActivity.lifecycleScope)
+                mplayer.value = MPlayer(this@MainActivity.lifecycleScope, get())
             }, MoreExecutors.directExecutor())
         }
     }
 
     override fun onStop() {
-        MPlayer.value?.drop()
+        mplayer.value?.close()
         controllerFuture?.apply(MediaController::releaseFuture)
         super.onStop()
     }

@@ -88,37 +88,40 @@ data class Playlist(val songs: List<Song>) {
         val duration: Long,
         val categories: List<String>,
     )
+}
 
-    @JvmInline
-    value class VideoId(private val id: String) : Parcelable {
-        constructor(parcel: Parcel) : this(parcel.readString()!!)
+@JvmInline
+value class VideoId(private val id: String) : Parcelable {
+    constructor(parcel: Parcel) : this(parcel.readString()!!)
 
-        fun toAudioUri(): Uri =
-            Uri.parse("https://mendess.xyz/api/v1/playlist/audio/${id}")
+    fun toAudioUri(): Uri =
+        Uri.parse("https://mendess.xyz/api/v1/playlist/audio/${id}")
 
-        fun toThumbnailUri(): Uri =
-            Uri.parse("https://mendess.xyz/api/v1/playlist/thumb/${id}")
+    fun toThumbnailUri(): Uri =
+        Uri.parse("https://mendess.xyz/api/v1/playlist/thumb/${id}")
 
-        override fun writeToParcel(parcel: Parcel, flags: Int) {
-            parcel.writeString(id)
+    fun toMetadataUri(): Uri =
+        Uri.parse("https://mendess.xyz/api/v1/playlist/metadata/${id}")
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeString(id)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    companion object CREATOR : Parcelable.Creator<VideoId> {
+        fun fromUrl(s: String): VideoId {
+            return VideoId(Uri.parse(s).path!!.trimStart('/'))
         }
 
-        override fun describeContents(): Int {
-            return 0
+        override fun createFromParcel(parcel: Parcel): VideoId {
+            return VideoId(parcel)
         }
 
-        companion object CREATOR : Parcelable.Creator<VideoId> {
-            fun fromUrl(s: String): VideoId {
-                return VideoId(Uri.parse(s).path!!.trimStart('/'))
-            }
-
-            override fun createFromParcel(parcel: Parcel): VideoId {
-                return VideoId(parcel)
-            }
-
-            override fun newArray(size: Int): Array<VideoId?> {
-                return arrayOfNulls(size)
-            }
+        override fun newArray(size: Int): Array<VideoId?> {
+            return arrayOfNulls(size)
         }
     }
 }

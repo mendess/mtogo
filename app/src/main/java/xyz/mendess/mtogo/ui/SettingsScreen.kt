@@ -30,9 +30,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mendess.mtogo.R
+import xyz.mendess.mtogo.data.Credentials
+import xyz.mendess.mtogo.data.StoredCredentialsState
 import xyz.mendess.mtogo.viewmodels.BackendViewModel
-import xyz.mendess.mtogo.viewmodels.Credentials
-import xyz.mendess.mtogo.viewmodels.StoredCredentialsState
 
 @Composable
 fun SettingsScreen(viewModel: BackendViewModel, modifier: Modifier) {
