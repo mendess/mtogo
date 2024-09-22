@@ -2,6 +2,7 @@
 
 package xyz.mendess.mtogo.ui
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -206,10 +207,13 @@ private fun QueueSearchButton(
         modifier = modifier
     ) {
         mplayer.scope.launch(Dispatchers.Main) {
-            mplayer.queueMediaItem(
-                mplayer.mediaItemFromSearch(search),
-                autoplay = true,
-            )
+            mplayer.mediaItemFromSearch(search)
+                .onSuccess {
+                    mplayer.queueMediaItem(it, autoplay = true)
+                }
+                .onFailure {
+                    Log.d("PlaylistScreen", "failed to make media item for searching: $it")
+                }
         }
         onQueue()
     }

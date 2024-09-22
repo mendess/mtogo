@@ -33,6 +33,7 @@ import com.mendess.mtogo.R
 import xyz.mendess.mtogo.data.Credentials
 import xyz.mendess.mtogo.data.StoredCredentialsState
 import xyz.mendess.mtogo.viewmodels.BackendViewModel
+import java.util.UUID
 
 @Composable
 fun SettingsScreen(viewModel: BackendViewModel, modifier: Modifier) {
@@ -46,20 +47,22 @@ fun SettingsScreen(viewModel: BackendViewModel, modifier: Modifier) {
     }
 }
 
-sealed interface UriTextFieldContent {
-    data class Uri(val uri: android.net.Uri) : UriTextFieldContent {
-        override fun toString(): String = uri.toString()
+sealed interface TextFieldContent<out T> {
+    data class Valid<out T>(val v: T) : TextFieldContent<T> {
+        override fun toString(): String = v.toString()
     }
 
-    data class Error(val badContent: String) : UriTextFieldContent {
+    data class Invalid(val badContent: String) : TextFieldContent<Nothing> {
         override fun toString(): String = badContent
     }
 }
 
+fun <T> TextFieldContent<T>?.valid(): Boolean = this is TextFieldContent.Valid
+
 @Composable
 fun ConnectScreen(
     currentCredentials: Credentials?,
-    connect: (Uri, String) -> Unit,
+    connect: (Uri, UUID) -> Unit,
     modifier: Modifier
 ) {
     Row(
@@ -68,20 +71,24 @@ fun ConnectScreen(
         modifier = modifier.fillMaxWidth()
     ) {
         val domain = remember {
-            mutableStateOf<UriTextFieldContent?>(
-                currentCredentials?.uri?.let(UriTextFieldContent::Uri)
+            mutableStateOf<TextFieldContent<Uri>?>(
+                currentCredentials?.uri?.let { TextFieldContent.Valid(it) }
             )
         }
-        val token = remember { mutableStateOf(currentCredentials?.token) }
+        val token = remember {
+            mutableStateOf<TextFieldContent<UUID>?>(
+                currentCredentials?.token?.let { TextFieldContent.Valid(it) }
+            )
+        }
 
         Column {
             TextField(
                 value = domain.value?.toString() ?: "",
                 onValueChange = {
                     domain.value = try {
-                        UriTextFieldContent.Uri(Uri.parse(it.lowercase()))
+                        TextFieldContent.Valid(Uri.parse(it.lowercase()))
                     } catch (e: Exception) {
-                        UriTextFieldContent.Error(it.lowercase())
+                        TextFieldContent.Invalid(it.lowercase())
                     }
                 },
                 label = { Text("domain") },
@@ -89,29 +96,37 @@ fun ConnectScreen(
                     keyboardType = KeyboardType.Uri,
                     capitalization = KeyboardCapitalization.None,
                 ),
-                isError = domain.value is UriTextFieldContent.Error
+                isError = !domain.value.valid()
             )
             TextField(
-                value = token.value ?: "",
-                onValueChange = { token.value = it.lowercase() },
+                value = token.value?.toString() ?: "",
+                onValueChange = {
+                    token.value = try {
+                        if (it.length < 36) throw IllegalArgumentException()
+                        TextFieldContent.Valid(UUID.fromString(it.lowercase()))
+                    } catch (e: IllegalArgumentException) {
+                        TextFieldContent.Invalid(it.lowercase())
+                    }
+                },
                 label = { Text("token") },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
                     capitalization = KeyboardCapitalization.None
                 ),
+                isError = !token.value.valid()
             )
         }
         Button(
             onClick = onClick@{
-                val token = token.value ?: return@onClick
-                val domain = domain.value as? UriTextFieldContent.Uri ?: return@onClick
-                connect(domain.uri, token)
+                val token = token.value as? TextFieldContent.Valid ?: return@onClick
+                val domain = domain.value as? TextFieldContent.Valid ?: return@onClick
+                connect(domain.v, token.v)
             },
             modifier = modifier.size(50.dp),
             shape = CircleShape,
             contentPadding = PaddingValues(2.dp),
-            enabled = token.value != null && domain.value is UriTextFieldContent.Uri
+            enabled = token.value.valid() && domain.value.valid()
         ) {
             Icon(
                 painter = painterResource(R.drawable.baseline_save_24),

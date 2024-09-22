@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import xyz.mendess.mtogo.data.Settings
 import xyz.mendess.mtogo.ui.dataStore
+import java.util.UUID
 
 class BackendViewModel(
     private val settings: Settings,
@@ -18,7 +19,7 @@ class BackendViewModel(
 
     val credentials get() = settings.credentials
 
-    fun connect(domain: Uri, token: String) {
+    fun connect(domain: Uri, token: UUID) {
         settings.saveBackendConnection(domain, token)
     }
 

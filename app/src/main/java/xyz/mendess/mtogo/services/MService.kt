@@ -20,6 +20,7 @@ import xyz.mendess.mtogo.util.Spark
 import kotlin.time.Duration.Companion.milliseconds
 import android.provider.Settings as AndroidSettings
 
+
 // TODO: https://developer.android.com/media/media3/session/background-playback#resumption
 class MService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
@@ -71,7 +72,9 @@ class MService : MediaSessionService() {
                 }
                 .map { credentials ->
                     lastSocket?.disconnect()
-                    SocketIo(credentials.uri, hostname).also { socket -> lastSocket = socket }
+                    SocketIo(credentials, hostname)
+
+                        .also { socket -> lastSocket = socket }
                 }
                 .collect { socket ->
                     socket.onWithAck(scope, "command") {
@@ -136,7 +139,9 @@ private suspend fun handleCommand(command: Spark.Command, player: MPlayer): Into
                 val mediaItem = if (cmd.search && cmd.query.startsWith("http")) {
                     mediaItemFromSearch(cmd.query).fold(
                         onSuccess = { it },
-                        onFailure = { return }
+                        onFailure = {
+                            return Spark.ErrorResponse.RequestFailed("search failed $it")
+                        }
                     )
                 } else {
                     mediaItemFromUrl(cmd.query)
