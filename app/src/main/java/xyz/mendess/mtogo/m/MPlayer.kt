@@ -13,6 +13,7 @@ import xyz.mendess.mtogo.util.MediaItems
 import java.io.Closeable
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val LAST_QUEUE_NULL = -1
@@ -50,6 +51,22 @@ class MPlayer(
             index = 0U,
             next = player.nextSongs(1U).firstOrNull()
         )
+    }
+
+    fun changeVolume(delta: Int): Double {
+        /// 30 - 100
+        /// x  - delta
+        /// x = delta * 30 / 100
+        val mappedDelta = ((delta * 30).toDouble() / 100).roundToInt()
+        player.setDeviceVolume(
+            (player.deviceVolume + mappedDelta)
+                .coerceIn(0, player.deviceInfo.maxVolume),
+            0 // flags
+        )
+        // 30 - 100
+        /// volume - mapped
+        /// mapped = volume * 100 / 30
+        return ((player.deviceVolume * 100).toDouble() / 30)
     }
 
     suspend fun queueMediaItems(mediaItems: Sequence<ParcelableMediaItem>) {

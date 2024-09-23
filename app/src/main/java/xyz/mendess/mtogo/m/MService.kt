@@ -85,10 +85,13 @@ class MService : MediaSessionService() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.Main + job)
 
+    @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
         val settings = Settings(dataStore)
-        val player = ExoPlayer.Builder(this).build().let { MPlayer(scope, it) }
+        val player = ExoPlayer.Builder(this)
+            .setDeviceVolumeControlEnabled(true)
+            .build().let { MPlayer(scope, it) }
         mediaSession = MediaSession.Builder(this, player)
             .setCallback(object : MediaSession.Callback {
                 @OptIn(UnstableApi::class)

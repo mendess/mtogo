@@ -75,8 +75,7 @@ class SparkConnection(
             }
 
             is Spark.MusicCmdKind.ChangeVolume -> {
-                player.volume += cmd.amount.toFloat() / 100
-                Spark.MusicResponse.Volume(player.volume.toDouble() * 100)
+                Spark.MusicResponse.Volume(player.changeVolume(cmd.amount))
             }
 
             Spark.MusicCmdKind.Current -> {
