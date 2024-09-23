@@ -21,6 +21,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,6 +35,7 @@ import com.mendess.mtogo.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import xyz.mendess.mtogo.m.MPlayerController
+import xyz.mendess.mtogo.util.LongPressButton
 import xyz.mendess.mtogo.viewmodels.Playlist
 import xyz.mendess.mtogo.viewmodels.PlaylistLoadingState
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
@@ -76,6 +78,7 @@ private fun PlaylistTabsContent(
     val lastQueue = mplayer.lastQueue.collectAsStateWithLifecycle()
     var mode by remember { mutableStateOf(Mode.Songs) }
     val searchBuffer = remember { mutableStateOf("") }
+    val icon = remember { mutableIntStateOf(R.drawable.baseline_shuffle_24) }
 
     val onQueue = { searchBuffer.value = "" }
 
@@ -84,14 +87,21 @@ private fun PlaylistTabsContent(
             val modifier = modifier
                 .weight(1f)
                 .padding(5.dp)
-            Button(
+            LongPressButton(
                 colors = ButtonDefaults.buttonColors()
                     .copy(containerColor = MaterialTheme.colorScheme.secondary),
-                onClick = { mplayer.queuePlaylistItems(list.songs.shuffled().asSequence()) },
+                onClick = {
+                    mplayer.queuePlaylistItems(list.songs.shuffled().asSequence())
+                    icon.value = R.drawable.baseline_shuffle_24
+                },
+                onLongPress = {
+                    mplayer.queuePlaylistItems(list.songs.asSequence())
+                    icon.value = R.drawable.baseline_unshuffle_alt_24
+                },
                 modifier = modifier,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.baseline_shuffle_24),
+                    painter = painterResource(icon.value),
                     contentDescription = null,
                 )
             }
