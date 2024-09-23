@@ -1,5 +1,6 @@
-package xyz.mendess.mtogo.util
+package xyz.mendess.mtogo.spark
 
+import android.util.Log
 import androidx.annotation.FloatRange
 import org.json.JSONArray
 import org.json.JSONException
@@ -88,7 +89,9 @@ object Spark {
                     }
 
                     "Queue" -> with(obj.getJSONObject("Queue")) {
-                        Queue(query = getString("query"), search = getBoolean("search"))
+                        Queue(query = getString("query"), search = getBoolean("search")).also {
+                            Log.d("SparkProtocol", "parsing $obj as $it")
+                        }
                     }
 
                     "Now" -> with(obj.getJSONObject("Now")) {

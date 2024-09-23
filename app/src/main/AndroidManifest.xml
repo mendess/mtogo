@@ -28,7 +28,7 @@
             </intent-filter>
         </activity>
         <service
-            android:name="xyz.mendess.mtogo.services.MService"
+            android:name="xyz.mendess.mtogo.m.MService"
             android:foregroundServiceType="mediaPlayback"
             android:exported="true">
             <intent-filter>

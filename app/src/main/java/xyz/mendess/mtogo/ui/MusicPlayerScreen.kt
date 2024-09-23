@@ -3,7 +3,9 @@
 package xyz.mendess.mtogo.ui
 
 //noinspection UsingMaterialAndMaterial3Libraries
+//noinspection UsingMaterialAndMaterial3Libraries
 import android.text.format.DateUtils
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,31 +46,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import com.mendess.mtogo.R
+import xyz.mendess.mtogo.m.CurrentSong
+import xyz.mendess.mtogo.m.MPlayerController
+import xyz.mendess.mtogo.m.PlayState
 import xyz.mendess.mtogo.util.AutoSizeText
-import xyz.mendess.mtogo.util.CurrentSong
-import xyz.mendess.mtogo.util.MPlayer
-import xyz.mendess.mtogo.util.PlayState
 import xyz.mendess.mtogo.util.identity
 import xyz.mendess.mtogo.util.toInt
-
-@Composable
-fun PlayerScreen(mplayer: MPlayer, darkTheme: Boolean, modifier: Modifier = Modifier) {
-    val currentSong by mplayer.currentSong.collectAsStateWithLifecycle()
-    val playState by mplayer.playState.collectAsStateWithLifecycle()
-    val position by mplayer.positionMs.collectAsStateWithLifecycle()
-    val duration by mplayer.totalDurationMs.collectAsStateWithLifecycle()
-    val nextUp by mplayer.nextUp.collectAsStateWithLifecycle()
-    PlayerContent(
-        currentSong,
-        playState,
-        MediaButtonsVtable(mplayer),
-        position,
-        duration,
-        nextUp,
-        darkTheme,
-        modifier = modifier
-    )
-}
 
 data class MediaButtonsVtable(
     val prev: () -> Unit = {},
@@ -85,30 +68,25 @@ data class MediaButtonsVtable(
 }
 
 @Composable
-private fun PlayerContent(
-    currentSong: CurrentSong?,
-    playState: PlayState,
-    mediaButtonsVtable: MediaButtonsVtable,
-    position: Long,
-    duration: Long?,
-    nextUp: List<String>,
-    darkTheme: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val progress = duration?.let { (position.toFloat() / it.toFloat()) }
-
+fun PlayerScreen(mplayer: MPlayerController, darkTheme: Boolean, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        CurrentSongScreen(currentSong, darkTheme, modifier)
-        Spacer(modifier = modifier.height(10.dp))
-        MediaControls(playState, modifier = modifier, vtable = mediaButtonsVtable)
-        ProgressBar(progress, position, duration, modifier = modifier)
-        Categories(currentSong?.categories ?: emptyList())
-        NextUp(nextUp, modifier = modifier)
+        CurrentSongScreen(mplayer, darkTheme, modifier)
+        Spacer(modifier.height(10.dp))
+        MediaControlsScreen(mplayer, modifier)
+        ProgressBarScreen(mplayer, modifier)
+        CategoriesScreen(mplayer, modifier)
+        NextUpScreen(mplayer, modifier)
     }
 }
 
 @Composable
-private fun CurrentSongScreen(
+private fun CurrentSongScreen(mplayer: MPlayerController, darkTheme: Boolean, modifier: Modifier) {
+    val currentSong by mplayer.currentSong.collectAsStateWithLifecycle()
+    CurrentSongContent(currentSong, darkTheme, modifier = modifier)
+}
+
+@Composable
+private fun CurrentSongContent(
     currentSong: CurrentSong?,
     darkTheme: Boolean,
     modifier: Modifier = Modifier
@@ -164,7 +142,13 @@ private fun CurrentSongScreen(
 }
 
 @Composable
-fun MediaControls(
+fun MediaControlsScreen(mplayer: MPlayerController, modifier: Modifier = Modifier) {
+    val playState by mplayer.playState.collectAsStateWithLifecycle()
+    MediaControlsContent(playState, modifier, MediaButtonsVtable(mplayer))
+}
+
+@Composable
+fun MediaControlsContent(
     playState: PlayState,
     modifier: Modifier = Modifier,
     vtable: MediaButtonsVtable,
@@ -212,7 +196,13 @@ fun MediaControls(
 }
 
 @Composable
-fun Categories(categories: List<String>, modifier: Modifier = Modifier) {
+fun CategoriesScreen(mplayer: MPlayerController, modifier: Modifier = Modifier) {
+    val currentSong by mplayer.currentSong.collectAsStateWithLifecycle()
+    CategoriesContent(currentSong?.categories ?: emptyList(), modifier = modifier)
+}
+
+@Composable
+fun CategoriesContent(categories: List<String>, modifier: Modifier = Modifier) {
     LazyRow(modifier = modifier) {
         items(categories, key = ::identity) { cat ->
             Text(
@@ -249,7 +239,20 @@ fun MediaButton(
 }
 
 @Composable
-fun ProgressBar(progress: Float?, position: Long, duration: Long?, modifier: Modifier = Modifier) {
+fun ProgressBarScreen(mplayer: MPlayerController, modifier: Modifier = Modifier) {
+    val position by mplayer.positionMs.collectAsStateWithLifecycle()
+    val duration by mplayer.totalDurationMs.collectAsStateWithLifecycle()
+    val progress = duration?.let { (position.toFloat() / it.toFloat()) }
+    ProgressBarContent(progress, position, duration, modifier = modifier)
+}
+
+@Composable
+fun ProgressBarContent(
+    progress: Float?,
+    position: Long,
+    duration: Long?,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier
             .fillMaxWidth(fraction = 0.8f)
@@ -281,7 +284,14 @@ fun ProgressBar(progress: Float?, position: Long, duration: Long?, modifier: Mod
 }
 
 @Composable
-fun NextUp(list: List<String>, modifier: Modifier = Modifier) {
+fun NextUpScreen(mplayer: MPlayerController, modifier: Modifier = Modifier) {
+    val nextUp by mplayer.nextUp.collectAsStateWithLifecycle()
+    NextUpContent(nextUp, modifier)
+}
+
+@Composable
+fun NextUpContent(list: List<String>, modifier: Modifier = Modifier) {
+    Log.d("MusicPlayerScreen::NextUp", "updating up next to: $list")
     val fontWeights =
         sequenceOf(FontWeight.Normal, FontWeight.Light, FontWeight.ExtraLight)
             .plus(generateSequence { FontWeight.ExtraLight })
@@ -316,13 +326,15 @@ fun PreviewPlayerScreen() {
     val currentSong =
         CurrentSong(title = "No Music", thumbNailUri = null, categories = ArrayList())
     val playState = PlayState.Playing
-    PlayerContent(
-        currentSong,
-        playState,
-        MediaButtonsVtable(),
-        position = 30,
-        duration = 500,
-        listOf("first", "second", "third"),
-        darkTheme = true,
-    )
+
+    Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+        CurrentSongContent(currentSong, true)
+        Spacer(modifier = Modifier.height(10.dp))
+        MediaControlsContent(playState, vtable = MediaButtonsVtable())
+        ProgressBarContent(30.0f / 500.0f, position = 30, duration = 500)
+        CategoriesContent(currentSong.categories)
+        NextUpContent(
+            listOf("first", "second", "third"),
+        )
+    }
 }

@@ -29,10 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mendess.mtogo.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import xyz.mendess.mtogo.util.MPlayer
+import xyz.mendess.mtogo.m.MPlayerController
 import xyz.mendess.mtogo.viewmodels.Playlist
 import xyz.mendess.mtogo.viewmodels.PlaylistLoadingState
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
@@ -40,7 +41,7 @@ import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 @Composable
 fun PlaylistScreen(
     playlistViewModel: PlaylistViewModel,
-    mplayer: MPlayer,
+    mplayer: MPlayerController,
     modifier: Modifier = Modifier
 ) {
     val list by playlistViewModel.playlistFlow.collectAsState()
@@ -69,9 +70,10 @@ enum class Mode {
 @Composable
 private fun PlaylistTabsContent(
     list: Playlist,
-    mplayer: MPlayer,
+    mplayer: MPlayerController,
     modifier: Modifier = Modifier
 ) {
+    val lastQueue = mplayer.lastQueue.collectAsStateWithLifecycle()
     var mode by remember { mutableStateOf(Mode.Songs) }
     val searchBuffer = remember { mutableStateOf("") }
 
@@ -89,6 +91,15 @@ private fun PlaylistTabsContent(
                     painter = painterResource(R.drawable.baseline_shuffle_24),
                     contentDescription = null,
                 )
+            }
+            Button(
+                colors = ButtonDefaults.buttonColors()
+                    .copy(containerColor = MaterialTheme.colorScheme.secondary),
+                onClick = { mplayer.scope.launch { mplayer.resetLastQueue() } },
+                enabled = lastQueue.value != null
+            ) {
+                val relativeLastQueue = lastQueue.value?.let { "+${it - mplayer.currentMediaItemIndex.toUInt()}" }
+                Text(text = relativeLastQueue ?: "x")
             }
             Button(
                 colors = ButtonDefaults.buttonColors()
@@ -124,7 +135,7 @@ private fun PlaylistTabsContent(
 @Composable
 private fun PlaylistContent(
     list: Playlist,
-    mplayer: MPlayer,
+    mplayer: MPlayerController,
     filter: String,
     onQueue: () -> Unit,
     modifier: Modifier = Modifier
@@ -150,7 +161,7 @@ private fun PlaylistContent(
 @Composable
 private fun CategoriesContent(
     list: Playlist,
-    mplayer: MPlayer,
+    mplayer: MPlayerController,
     filter: String,
     onQueue: () -> Unit,
     modifier: Modifier = Modifier
@@ -197,7 +208,7 @@ private fun QueueButton(
 
 @Composable
 private fun QueueSearchButton(
-    mplayer: MPlayer,
+    mplayer: MPlayerController,
     search: String,
     onQueue: () -> Unit,
     modifier: Modifier = Modifier
@@ -207,9 +218,9 @@ private fun QueueSearchButton(
         modifier = modifier
     ) {
         mplayer.scope.launch(Dispatchers.Main) {
-            mplayer.mediaItemFromSearch(search)
+            mplayer.mediaItems.fromSearch(search)
                 .onSuccess {
-                    mplayer.queueMediaItem(it, autoplay = true)
+                    mplayer.queueMediaItem(it, notBatching = true)
                 }
                 .onFailure {
                     Log.d("PlaylistScreen", "failed to make media item for searching: $it")

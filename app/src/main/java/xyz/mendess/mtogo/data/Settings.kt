@@ -19,9 +19,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.zip
 import kotlinx.coroutines.launch
+import xyz.mendess.mtogo.spark.Credentials
 import java.util.UUID
-
-data class Credentials(val uri: Uri, val token: UUID)
 
 private val SAVED_STATE_DOMAIN = stringPreferencesKey("domain")
 private val SAVED_STATE_TOKEN = stringPreferencesKey("token")
@@ -60,7 +59,7 @@ class Settings(private val dataStore: DataStore<Preferences>) : ViewModel() {
 
     fun saveBackendConnection(domain: Uri, token: UUID) {
         viewModelScope.launch {
-            Log.d("BackendViewModel", "storing to disk: $domain | $token")
+            Log.d("Settings", "storing to disk: $domain | $token")
             dataStore.edit { preferences ->
                 preferences[SAVED_STATE_DOMAIN] = domain.toString()
                 preferences[SAVED_STATE_TOKEN] = token.toString()

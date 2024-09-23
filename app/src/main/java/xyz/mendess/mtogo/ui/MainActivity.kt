@@ -3,7 +3,6 @@
 package xyz.mendess.mtogo.ui
 
 import android.content.ComponentName
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -26,9 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.MediaController
@@ -36,19 +32,17 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.flow.MutableStateFlow
-import xyz.mendess.mtogo.services.MService
+import xyz.mendess.mtogo.m.MService
 import xyz.mendess.mtogo.ui.theme.MToGoTheme
-import xyz.mendess.mtogo.util.MPlayer
 import xyz.mendess.mtogo.viewmodels.BackendViewModel
+import xyz.mendess.mtogo.m.MPlayerController
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
-
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
 class MainActivity : ComponentActivity() {
     private val playlistViewModel: PlaylistViewModel by viewModels()
     private val backendViewModel: BackendViewModel by viewModels { BackendViewModel.Factory }
 
-    private val mplayer: MutableStateFlow<MPlayer?> = MutableStateFlow(
+    private val mplayer: MutableStateFlow<MPlayerController?> = MutableStateFlow(
         null
     )
     private var controllerFuture: ListenableFuture<MediaController>? = null
@@ -69,13 +63,12 @@ class MainActivity : ComponentActivity() {
         val sessionToken = SessionToken(this, ComponentName(this, MService::class.java))
         controllerFuture = MediaController.Builder(this, sessionToken).buildAsync().apply {
             addListener({
-                mplayer.value = MPlayer(this@MainActivity.lifecycleScope, get())
+                mplayer.value = MPlayerController(this@MainActivity.lifecycleScope, get())
             }, MoreExecutors.directExecutor())
         }
     }
 
     override fun onStop() {
-        mplayer.value?.close()
         controllerFuture?.apply(MediaController::releaseFuture)
         super.onStop()
     }
@@ -84,7 +77,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Screen(
     playlistViewModel: PlaylistViewModel,
-    mplayer: MPlayer,
+    mplayer: MPlayerController,
     backendViewModel: BackendViewModel,
     modifier: Modifier = Modifier,
     darkTheme: Boolean = isSystemInDarkTheme()
@@ -113,14 +106,13 @@ fun Screen(
 @Composable
 fun TabScreen(
     playlistViewModel: PlaylistViewModel,
-    MPlayer: MPlayer,
+    mplayer: MPlayerController,
     backendViewModel: BackendViewModel,
     darkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
-    var tabIndex by remember { mutableIntStateOf(3) }
-
-    val tabs = listOf("Music", "Queue", "Playlist", "Settings")
+    val tabs = listOf("Music", "Playlist", "Settings")
+    var tabIndex by remember { mutableIntStateOf(0) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         TabRow(selectedTabIndex = tabIndex, modifier = modifier) {
@@ -132,10 +124,9 @@ fun TabScreen(
             }
         }
         when (tabIndex) {
-            0 -> PlayerScreen(MPlayer, darkTheme, modifier)
-            1 -> Text(tabs[tabIndex])
-            2 -> PlaylistScreen(playlistViewModel, MPlayer, modifier)
-            3 -> SettingsScreen(backendViewModel, modifier)
+            0 -> PlayerScreen(mplayer, darkTheme, modifier)
+            1 -> PlaylistScreen(playlistViewModel, mplayer, modifier)
+            2 -> SettingsScreen(backendViewModel, darkTheme, modifier)
         }
     }
 }

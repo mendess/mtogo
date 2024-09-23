@@ -90,6 +90,8 @@ dependencies {
     val kotlinJsonVersion = "1.6.3"
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinJsonVersion")
 
+    implementation("io.github.g0dkar:qrcode-kotlin:4.1.1")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

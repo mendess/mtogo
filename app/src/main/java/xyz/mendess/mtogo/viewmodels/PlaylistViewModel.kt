@@ -11,6 +11,8 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import okhttp3.internal.closeQuietly
 
@@ -52,9 +54,15 @@ class PlaylistViewModel(default: List<Playlist.Song> = emptyList()) : ViewModel(
             }
         }
     }
+
+    suspend fun get(): Playlist {
+        return playlistFlow.filterIsInstance<PlaylistLoadingState.Success>().first().playlist
+    }
 }
 
 data class Playlist(val songs: List<Song>) {
+    fun findByName(query: String): Song? = songs.find { it.title == query }
+
     companion object {
         fun fromStr(s: String) = Playlist(
             songs = s.split('\n')

@@ -1,5 +1,6 @@
-package xyz.mendess.mtogo.util
+package xyz.mendess.mtogo.spark
 
+import android.net.Uri
 import android.util.Log
 import io.socket.client.Ack
 import io.socket.client.IO
@@ -7,27 +8,29 @@ import io.socket.client.Manager
 import io.socket.client.Socket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import xyz.mendess.mtogo.data.Credentials
 import java.util.Collections.singletonMap
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+
+data class Credentials(val uri: Uri, val token: UUID)
 
 class SocketIo(credentials: Credentials, hostname: String) {
     private val registeredEvents: ConcurrentHashMap<String, Unit> = ConcurrentHashMap()
 
     private val socket: Socket = run {
-        Log.d("BackendViewModel", "connecting socket to $credentials")
+        Log.d("SocketIo", "connecting socket to $credentials")
 
         val options = IO.Options.builder()
             .setAuth(singletonMap("token", credentials.token.toString()))
             .build()
         IO.socket("${credentials.uri}/spark-protocol?h=$hostname", options).connect().apply {
-            on(Socket.EVENT_CONNECT) { Log.d("BackendViewModel", "Socket connected!") }
+            on(Socket.EVENT_CONNECT) { Log.d("SocketIo", "Socket connected!") }
             on(Socket.EVENT_CONNECT_ERROR) { args ->
-                Log.d("BackendViewModel", "connection failed: ${args.contentDeepToString()}")
+                Log.d("SocketIo", "connection failed: ${args.contentDeepToString()}")
             }
             io().on(Manager.EVENT_ERROR) { args ->
                 Log.d(
-                    "BackendViewModel",
+                    "SocketIo",
                     "error: ${args.contentDeepToString()}"
                 )
             }
