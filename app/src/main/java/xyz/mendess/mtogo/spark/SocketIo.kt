@@ -75,7 +75,7 @@ class SocketIo(credentials: Credentials, hostname: String) {
         }
     }
 
-    fun off(event: String) {
+    private fun off(event: String) {
         socket.off(event)
     }
 }

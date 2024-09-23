@@ -32,10 +32,10 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.flow.MutableStateFlow
+import xyz.mendess.mtogo.m.MPlayerController
 import xyz.mendess.mtogo.m.MService
 import xyz.mendess.mtogo.ui.theme.MToGoTheme
 import xyz.mendess.mtogo.viewmodels.BackendViewModel
-import xyz.mendess.mtogo.m.MPlayerController
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 
 class MainActivity : ComponentActivity() {
@@ -130,20 +130,3 @@ fun TabScreen(
         }
     }
 }
-
-//@Preview(showBackground = true)
-//@Composable
-//fun ScreenPreview() {
-//    val playlistViewModel = PlaylistViewModel(
-//        listOf("Birds of a Feather", "Signal 30", "Rex Orange County - Best Friend").map {
-//            Playlist.Song(
-//                title = it,
-//                id = Playlist.VideoId("aksjkdlas"),
-//                categories = ArrayList(),
-//                duration = 50
-//            )
-//        }
-//    )
-//
-//    Screen(playlistViewModel)
-//}

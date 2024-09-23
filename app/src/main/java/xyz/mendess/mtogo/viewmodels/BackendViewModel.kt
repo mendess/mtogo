@@ -1,5 +1,3 @@
-@file:Suppress("NAME_SHADOWING")
-
 package xyz.mendess.mtogo.viewmodels
 
 import android.app.Application
@@ -17,8 +15,8 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.json.Json
 import okhttp3.internal.closeQuietly
-import xyz.mendess.mtogo.spark.Credentials
 import xyz.mendess.mtogo.data.Settings
+import xyz.mendess.mtogo.spark.Credentials
 import xyz.mendess.mtogo.util.dataStore
 import xyz.mendess.mtogo.util.hostname
 import java.util.UUID

@@ -21,10 +21,10 @@ class SparkConnection(
     private val scope: CoroutineScope,
 ) {
     init {
-        scope.launch { connectToBackend(settings, hostname, player) }
+        scope.launch { connectToBackend(settings, hostname) }
     }
 
-    private suspend fun connectToBackend(settings: Settings, hostname: String, player: MPlayer) {
+    private suspend fun connectToBackend(settings: Settings, hostname: String) {
         var lastSocket: SocketIo? = null
         try {
             settings.credentials

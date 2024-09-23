@@ -28,7 +28,6 @@ class MediaItems : Closeable {
     companion object {
         const val MUSIC_METADATA_CATEGORIES = "cat"
         const val MUSIC_METADATA_THUMBNAIL_ID = "thumb"
-        const val MUSIC_METADATA_DURATION = "dur"
     }
 
     val http = HttpClient(CIO)

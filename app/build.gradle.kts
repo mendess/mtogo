@@ -51,47 +51,31 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation (libs.socket.io.client)
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.material)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.exoplayer.dash)
+    implementation(libs.androidx.media3.session)
+    implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-
-    implementation("androidx.compose.material:material:1.7.1")
-    implementation(libs.androidx.media3.session)
-
-    val lifecycleVersion = "2.8.5"
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion")
-
-    val coilVersion = "2.7.0"
-    implementation("io.coil-kt:coil:$coilVersion")
-    implementation("io.coil-kt:coil-compose:$coilVersion")
-
-    val exoplayerVersion = "1.4.1"
-    implementation("androidx.media3:media3-exoplayer:$exoplayerVersion")
-    implementation("androidx.media3:media3-exoplayer-dash:$exoplayerVersion")
-    implementation("androidx.media3:media3-ui:$exoplayerVersion")
-
-    val ktorVersion = "2.3.12"
-    implementation("io.ktor:ktor-client-core:$ktorVersion")
-    implementation("io.ktor:ktor-client-cio:$ktorVersion")
-    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-
-    val datastorePreferences = "1.1.1"
-    implementation("androidx.datastore:datastore-preferences:$datastorePreferences")
-
-    val socketIoVersion = "2.1.1"
-    implementation ("io.socket:socket.io-client:$socketIoVersion")
-
-    val kotlinJsonVersion = "1.6.3"
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinJsonVersion")
-
-    implementation("io.github.g0dkar:qrcode-kotlin:4.1.1")
-
+    implementation(libs.coil)
+    implementation(libs.coil.compose)
+    implementation(libs.kotlinx.coroutines.guava)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.qrcode.kotlin)
+    implementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
