@@ -61,9 +61,9 @@ class MPlayerController(
                 delay(1.seconds)
             }
         }
+        updateCurrentSong(player.mediaMetadata)
+        updateUpNext()
         if (player.isPlaying) {
-            updateCurrentSong(player.mediaMetadata)
-            updateUpNext()
             _playState.value = PlayState.Playing
         }
     }
