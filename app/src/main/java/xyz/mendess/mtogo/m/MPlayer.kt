@@ -70,22 +70,20 @@ class MPlayer(
     }
 
     suspend fun queueMediaItems(mediaItems: Sequence<ParcelableMediaItem>) {
-        mediaItems.forEach { mediaItem ->
-            val oneshot = OneShot<Spark.MusicResponse.QueueSummary>()
-            mediaItemQueue.send(mediaItem to oneshot)
-            oneshot.receive()
-        }
+        val oneshot = OneShot<Spark.MusicResponse.QueueSummary>()
+        mediaItemQueue.send(mediaItems.map(ParcelableMediaItem::toMediaItem) to oneshot)
+        oneshot.receive()
         lastQueue = null
     }
 
     suspend fun queueMediaItem(mediaItem: ParcelableMediaItem): Spark.MusicResponse.QueueSummary {
         val oneshot = OneShot<Spark.MusicResponse.QueueSummary>()
-        mediaItemQueue.send(mediaItem to oneshot)
+        mediaItemQueue.send(sequenceOf(mediaItem.toMediaItem()) to oneshot)
         return oneshot.receive()
     }
 
     private val mediaItemQueue =
-        Channel<Pair<ParcelableMediaItem, OneShot<Spark.MusicResponse.QueueSummary>?>>(
+        Channel<Pair<Sequence<MediaItem>, OneShot<Spark.MusicResponse.QueueSummary>?>>(
             capacity = 500,
             BufferOverflow.SUSPEND
         )
@@ -103,20 +101,33 @@ class MPlayer(
         player.addListener(Listener(this))
         player.playWhenReady = true
         scope.launch {
-            mediaItemQueue.consumeEach { (item, oneshot) ->
-                queueMediaItemImpl(item, oneshot)
+            mediaItemQueue.consumeEach { (items, oneshot) ->
+                if (player.mediaItemCount == 0) { // if there is nothing playing just set the items
+                    player.setMediaItems(items.toList())
+                } else {
+                    val channel =
+                        if (oneshot != null) OneShot<Spark.MusicResponse.QueueSummary>() else null
+                    for (i in items) {
+                        queueMediaItemImpl(i, channel)
+                    }
+                    oneshot?.let { oneshot ->
+                        channel?.let { channel ->
+                            oneshot.send(channel.receive())
+                        }
+                    }
+                }
             }
         }
     }
 
     private fun queueMediaItemImpl(
-        mediaItem: ParcelableMediaItem,
+        mediaItem: MediaItem,
         oneshot: OneShot<Spark.MusicResponse.QueueSummary>?
     ) {
         val moveTo = _lastQueue.updateAndGet {
             (if (it == LAST_QUEUE_NULL) player.currentMediaItemIndex else it) + 1
         }.toUInt()
-        player.addMediaItem(mediaItem.toMediaItem())
+        player.addMediaItem(mediaItem)
         val queuedPosition = max(player.mediaItemCount - 1, 0).toUInt()
         val currentPosition = player.currentMediaItemIndex.toUInt()
         val summary = if (queuedPosition != moveTo) {

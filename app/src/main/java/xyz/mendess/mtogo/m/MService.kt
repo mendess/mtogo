@@ -94,8 +94,11 @@ class MService : MediaSessionService() {
         val settings = Settings(dataStore)
         val player = ExoPlayer.Builder(this)
             .setDeviceVolumeControlEnabled(true)
+            .setHandleAudioBecomingNoisy(true)
             .build()
-            .apply { repeatMode = Player.REPEAT_MODE_ALL }
+            .apply {
+                repeatMode = Player.REPEAT_MODE_ALL
+            }
             .let { MPlayer(scope, it) }
         mediaSession = MediaSession.Builder(this, player)
             .setCallback(object : MediaSession.Callback {

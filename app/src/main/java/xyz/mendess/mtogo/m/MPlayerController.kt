@@ -125,7 +125,9 @@ class MPlayerController(
     private class Listener(val viewModel: MPlayerController) : Player.Listener {
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
             viewModel._nextUp.value = viewModel.player.nextSongs(5U)
-            viewModel.scope.launch { viewModel._lastQueue.value = viewModel.getLastQueue() }
+            viewModel.scope.launch {
+                viewModel._lastQueue.value = viewModel.getLastQueue()
+            }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -141,12 +143,18 @@ class MPlayerController(
         override fun onPlaybackStateChanged(playbackState: Int) {
             super.onPlaybackStateChanged(playbackState)
             when (playbackState) {
-                Player.STATE_ENDED -> {}
-                Player.STATE_IDLE -> {}
+                Player.STATE_ENDED -> {
+                }
+                Player.STATE_IDLE -> {
+                    if (viewModel.player.playerError != null) {
+                        viewModel.player.removeMediaItem(viewModel.player.currentMediaItemIndex)
+                        viewModel.player.prepare()
+                        viewModel.player.play()
+                    }
+                }
                 Player.STATE_READY -> {
                     viewModel._playState.value = PlayState.Ready
                 }
-
                 Player.STATE_BUFFERING -> {
                     viewModel._playState.value = PlayState.Buffering
                 }
