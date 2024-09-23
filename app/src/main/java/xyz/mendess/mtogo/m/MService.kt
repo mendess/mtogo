@@ -72,11 +72,13 @@ object CustomCommands {
     )
 }
 
+@Suppress("DEPRECATION")
 private inline fun <reified T : Parcelable> Bundle.parcelable(key: String): T? =
-    getParcelable(key, T::class.java)
+    getParcelable(key) as T?
 
+@Suppress("DEPRECATION")
 private inline fun <reified T : Parcelable> Bundle.parcelableList(key: String): ArrayList<T>? =
-    getParcelableArrayList(key, T::class.java)
+    getParcelableArrayList(key)
 
 // TODO: https://developer.android.com/media/media3/session/background-playback#resumption
 class MService : MediaSessionService() {
