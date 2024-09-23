@@ -242,13 +242,11 @@ fun MediaButton(
 fun ProgressBarScreen(mplayer: MPlayerController, modifier: Modifier = Modifier) {
     val position by mplayer.positionMs.collectAsStateWithLifecycle()
     val duration by mplayer.totalDurationMs.collectAsStateWithLifecycle()
-    val progress = duration?.let { (position.toFloat() / it.toFloat()) }
-    ProgressBarContent(progress, position, duration, modifier = modifier)
+    ProgressBarContent(position, duration, modifier = modifier)
 }
 
 @Composable
 fun ProgressBarContent(
-    progress: Float?,
     position: Long,
     duration: Long?,
     modifier: Modifier = Modifier
@@ -258,27 +256,14 @@ fun ProgressBarContent(
             .fillMaxWidth(fraction = 0.8f)
             .padding(bottom = 10.dp)
     ) {
-        Box(
-            modifier = modifier.height(50.dp)
-        ) {
-            progress?.let {
-                Slider(
-                    value = it,
-                    onValueChange = { },
-                    modifier = modifier,
-                    enabled = true,
-                )
-            }
+        if (duration == null) return
+        val progress = position.toFloat() / duration.toFloat()
+        Box(modifier = modifier.height(50.dp)) {
+            Slider(value = progress, onValueChange = { }, modifier = modifier, enabled = true)
         }
         Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(
-                DateUtils.formatElapsedTime(position / 1000),
-                modifier = modifier
-            )
-            Text(
-                duration?.let { DateUtils.formatElapsedTime(it / 1000) } ?: "??:??:??",
-                modifier = modifier
-            )
+            Text(DateUtils.formatElapsedTime(position / 1000), modifier = modifier)
+            Text(DateUtils.formatElapsedTime(duration / 1000), modifier = modifier)
         }
     }
 }
@@ -331,7 +316,7 @@ fun PreviewPlayerScreen() {
         CurrentSongContent(currentSong, true)
         Spacer(modifier = Modifier.height(10.dp))
         MediaControlsContent(playState, vtable = MediaButtonsVtable())
-        ProgressBarContent(30.0f / 500.0f, position = 30, duration = 500)
+        ProgressBarContent(position = 30, duration = 500)
         CategoriesContent(currentSong.categories)
         NextUpContent(
             listOf("first", "second", "third"),

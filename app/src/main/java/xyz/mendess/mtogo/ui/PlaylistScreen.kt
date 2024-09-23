@@ -80,13 +80,16 @@ private fun PlaylistTabsContent(
     val onQueue = { searchBuffer.value = "" }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+        Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            val modifier = modifier
+                .weight(1f)
+                .padding(5.dp)
             Button(
                 colors = ButtonDefaults.buttonColors()
                     .copy(containerColor = MaterialTheme.colorScheme.secondary),
-                onClick = {
-                    mplayer.queuePlaylistItems(list.songs.shuffled().asSequence())
-                }) {
+                onClick = { mplayer.queuePlaylistItems(list.songs.shuffled().asSequence()) },
+                modifier = modifier,
+            ) {
                 Icon(
                     painter = painterResource(R.drawable.baseline_shuffle_24),
                     contentDescription = null,
@@ -96,15 +99,18 @@ private fun PlaylistTabsContent(
                 colors = ButtonDefaults.buttonColors()
                     .copy(containerColor = MaterialTheme.colorScheme.secondary),
                 onClick = { mplayer.scope.launch { mplayer.resetLastQueue() } },
-                enabled = lastQueue.value != null
+                enabled = lastQueue.value != null,
+                modifier = modifier,
             ) {
-                val relativeLastQueue = lastQueue.value?.let { "+${it - mplayer.currentMediaItemIndex.toUInt()}" }
+                val relativeLastQueue =
+                    lastQueue.value?.let { "+${it - mplayer.currentMediaItemIndex.toUInt()}" }
                 Text(text = relativeLastQueue ?: "x")
             }
             Button(
                 colors = ButtonDefaults.buttonColors()
                     .copy(containerColor = MaterialTheme.colorScheme.secondary),
-                onClick = { mode = mode.cycle() }
+                onClick = { mode = mode.cycle() },
+                modifier = modifier,
             ) {
                 Text(mode.cycle().toString())
             }
@@ -116,6 +122,7 @@ private fun PlaylistTabsContent(
             TextField(
                 value = searchBuffer.value,
                 onValueChange = { searchBuffer.value = it },
+                label = { Text("search") },
                 modifier = modifier.fillMaxWidth(fraction = 0.8f)
             )
         }
