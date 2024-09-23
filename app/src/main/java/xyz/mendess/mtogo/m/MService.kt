@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Parcelable
 import androidx.annotation.OptIn
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
@@ -93,7 +94,9 @@ class MService : MediaSessionService() {
         val settings = Settings(dataStore)
         val player = ExoPlayer.Builder(this)
             .setDeviceVolumeControlEnabled(true)
-            .build().let { MPlayer(scope, it) }
+            .build()
+            .apply { repeatMode = Player.REPEAT_MODE_ALL }
+            .let { MPlayer(scope, it) }
         mediaSession = MediaSession.Builder(this, player)
             .setCallback(object : MediaSession.Callback {
                 @OptIn(UnstableApi::class)

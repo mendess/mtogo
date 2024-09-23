@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="12.7mm"
+   height="12.7mm"
+   viewBox="0 0 12.700001 12.7"
+   version="1.1"
+   id="svg1"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <linearGradient
+       id="linearGradient4">
+      <stop
+         style="stop-color:#6cc4ec;stop-opacity:1;"
+         offset="0"
+         id="stop4" />
+      <stop
+         style="stop-color:#e2691a;stop-opacity:1;"
+         offset="1"
+         id="stop5" />
+    </linearGradient>
+    <linearGradient
+       xlink:href="#linearGradient4"
+       id="linearGradient5"
+       x1="6.3125753"
+       y1="0.0045219185"
+       x2="6.3106132"
+       y2="12.679829"
+       gradientUnits="userSpaceOnUse" />
+  </defs>
+  <g
+     id="layer2"
+     style="display:inline;mix-blend-mode:normal">
+    <rect
+       style="display:inline;mix-blend-mode:normal;fill:url(#linearGradient5);fill-opacity:1;fill-rule:evenodd;stroke-width:0.264;stroke-dasharray:none"
+       id="rect3"
+       width="12.693476"
+       height="12.695695"
+       x="0.0011370883"
+       y="0.0031591272" />
+  </g>
+  <g
+     id="layer1"
+     transform="translate(-13.650043,-11.46786)"
+     style="display:none">
+    <text
+       xml:space="preserve"
+       style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:2.57776px;line-height:1.25;font-family:'Nimbus Sans';-inkscape-font-specification:'Nimbus Sans Bold Italic';mix-blend-mode:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.0644442"
+       x="16.70051"
+       y="21.879375"
+       id="text2"><tspan
+         id="tspan2"
+         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Nimbus Sans';-inkscape-font-specification:'Nimbus Sans Bold Italic';stroke-width:0.0644442"
+         x="16.70051"
+         y="21.879375">to go</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:11.1115px;line-height:1.25;font-family:'Nimbus Sans';-inkscape-font-specification:'Nimbus Sans Bold Italic';fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.0578722"
+       x="14.60541"
+       y="19.667845"
+       id="text1"><tspan
+         id="tspan1"
+         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:11.1115px;font-family:'Nimbus Sans';-inkscape-font-specification:'Nimbus Sans Bold Italic';stroke-width:0.0578722"
+         x="14.60541"
+         y="19.667845">m</tspan></text>
+  </g>
+</svg>

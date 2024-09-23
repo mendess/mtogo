@@ -134,6 +134,7 @@ private fun CurrentSongContent(
                         model = thumb.toString(),
                         contentScale = ContentScale.Crop,
                         contentDescription = "Album/Video art",
+                        modifier = modifier.fillMaxSize(),
                     )
                 }
             }
@@ -256,7 +257,12 @@ fun ProgressBarContent(
             .fillMaxWidth(fraction = 0.8f)
             .padding(bottom = 10.dp)
     ) {
-        if (duration == null) return
+        if (duration == null) {
+            // hack to avoid UI from jumping
+            Box(modifier = modifier.height(50.dp))
+            Text("")
+            return
+        }
         val progress = position.toFloat() / duration.toFloat()
         Box(modifier = modifier.height(50.dp)) {
             Slider(value = progress, onValueChange = { }, modifier = modifier, enabled = true)
