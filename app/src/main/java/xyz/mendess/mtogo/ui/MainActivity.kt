@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -31,6 +32,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.mendess.mtogo.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import xyz.mendess.mtogo.m.MPlayerController
 import xyz.mendess.mtogo.m.MService
@@ -50,10 +52,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val playerViewModel by this@MainActivity.mplayer.collectAsStateWithLifecycle()
-            when (val playerViewModel = playerViewModel) {
+            val mplayer by this@MainActivity.mplayer.collectAsStateWithLifecycle()
+            when (val mplayer = mplayer) {
                 null -> {}
-                playerViewModel -> Screen(playlistViewModel, playerViewModel, backendViewModel)
+                else -> Screen(playlistViewModel, mplayer, backendViewModel)
             }
         }
     }
@@ -89,7 +91,7 @@ fun Screen(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = modifier.fillMaxWidth()
                 ) {
-                    Text("m to go", textAlign = TextAlign.Center)
+                    Text(stringResource(R.string.app_name), textAlign = TextAlign.Center)
                 }
                 TabScreen(
                     playlistViewModel,
