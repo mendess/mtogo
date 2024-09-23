@@ -1,5 +1,3 @@
-@file:Suppress("NAME_SHADOWING")
-
 package xyz.mendess.mtogo.m
 
 import android.content.Intent
@@ -16,18 +14,18 @@ import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
-import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.guava.future
 import xyz.mendess.mtogo.data.Settings
 import xyz.mendess.mtogo.spark.SparkConnection
 import xyz.mendess.mtogo.util.dataStore
 import xyz.mendess.mtogo.util.hostname
 import kotlin.properties.ReadOnlyProperty
 
-typealias Action = (MPlayer, Bundle) -> SessionResult
+typealias Action = suspend (MPlayer, Bundle) -> SessionResult
 
 @OptIn(UnstableApi::class)
 object CustomCommands {
@@ -47,26 +45,24 @@ object CustomCommands {
     // deserialization error
     private val deError = SessionResult(SessionError.ERROR_BAD_VALUE)
 
-    val QUEUE_PLAYLIST_ITEM by command h@{ session: MPlayer, args: Bundle ->
+    val QUEUE_PLAYLIST_ITEM by command { session: MPlayer, args: Bundle ->
         session.queueMediaItem(
-            mediaItem = args.parcelable("item") ?: return@h deError,
-            move = args.getBoolean("move"),
-            notBatching = args.getBoolean("notBatching")
+            mediaItem = args.parcelable("item") ?: return@command deError,
         )
         SessionResult(SessionResult.RESULT_SUCCESS)
     }
-    val QUEUE_PLAYLIST_ITEMS by command h@{ session, args ->
-        val mediaItems = args.parcelableList<ParcelableMediaItem>("items") ?: return@h deError
+    val QUEUE_PLAYLIST_ITEMS by command { session, args ->
+        val mediaItems = args.parcelableList<ParcelableMediaItem>("items") ?: return@command deError
         session.queueMediaItems(mediaItems.asSequence())
         SessionResult(SessionResult.RESULT_SUCCESS)
     }
     val LAST_QUEUE by command { session, _ ->
         SessionResult(SessionResult.RESULT_SUCCESS, Bundle().apply {
-            session.lastQueue.value?.let { putInt("lastQueue", it.toInt()) }
+            session.lastQueue?.let { putInt("lastQueue", it.toInt()) }
         })
     }
     val RESET_LAST_QUEUE by command { session, _ ->
-        session.lastQueue.value = null
+        session.lastQueue = null
         SessionResult(SessionResult.RESULT_SUCCESS)
     }
 
@@ -113,9 +109,10 @@ class MService : MediaSessionService() {
                     controller: MediaSession.ControllerInfo,
                     customCommand: SessionCommand,
                     args: Bundle
-                ): ListenableFuture<SessionResult> = Futures.immediateFuture(
+                ): ListenableFuture<SessionResult> = scope.future {
                     CustomCommands.handlers[customCommand]!!(player, args)
-                )
+                }
+
             })
             .build()
         spark = SparkConnection(settings, hostname, player, scope)
