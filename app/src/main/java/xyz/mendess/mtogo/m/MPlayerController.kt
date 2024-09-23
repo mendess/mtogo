@@ -61,7 +61,7 @@ class MPlayerController(
                 delay(1.seconds)
             }
         }
-        updateCurrentSong(player.mediaMetadata)
+        updateCurrentSong()
         updateUpNext()
         if (player.isPlaying) {
             _playState.value = PlayState.Playing
@@ -107,8 +107,8 @@ class MPlayerController(
             .let { if (it < 0) null else it.toUInt() }
     }
 
-    private fun updateCurrentSong(meta: MediaMetadata) = meta.run {
-        _currentSong.value = meta.toCurrentSong()
+    private fun updateCurrentSong(meta: MediaMetadata? = null) = meta.run {
+        _currentSong.value = meta?.toCurrentSong() ?: currentSong()
     }
 
     private fun updateUpNext() {

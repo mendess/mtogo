@@ -43,10 +43,11 @@ fun Player.prevSongs(count: UInt): List<String> {
 }
 
 fun Player.currentSong(): CurrentSong? {
-    return mediaMetadata.toCurrentSong()
+    return if(mediaItemCount == 0) null
+    else mediaMetadata.toCurrentSong()
 }
 
-fun MediaMetadata.toCurrentSong(): CurrentSong? {
+fun MediaMetadata.toCurrentSong(): CurrentSong {
     return CurrentSong(
         title = title?.toString() ?: "unknown title",
         categories = extras
