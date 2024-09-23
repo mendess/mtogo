@@ -84,13 +84,17 @@ class SparkConnection(
             }
 
             is Spark.MusicCmdKind.Queue -> {
-                val mediaItem = if (cmd.search && !cmd.query.startsWith("http")) {
-                    player.mediaItems.fromSearch(cmd.query).fold(
-                        onSuccess = { it },
-                        onFailure = {
-                            return Spark.ErrorResponse.RequestFailed("search failed $it")
-                        }
-                    )
+                val mediaItem = if (cmd.search) {
+                    if (cmd.query.startsWith("http")) {
+                        player.mediaItems.fromUrl(cmd.query)
+                    } else {
+                        player.mediaItems.fromSearch(cmd.query).fold(
+                            onSuccess = { it },
+                            onFailure = {
+                                return Spark.ErrorResponse.RequestFailed("search failed $it")
+                            }
+                        )
+                    }
                 } else {
                     val song = playlist.get().findByName(cmd.query)
                         ?: return Spark.ErrorResponse.RequestFailed("Song not in playlist")
