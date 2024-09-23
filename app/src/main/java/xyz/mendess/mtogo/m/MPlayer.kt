@@ -13,6 +13,7 @@ import xyz.mendess.mtogo.spark.Spark
 import xyz.mendess.mtogo.util.MediaItems
 import java.io.Closeable
 import kotlin.math.max
+import kotlin.time.Duration.Companion.milliseconds
 
 class MPlayer(
     val scope: CoroutineScope,
@@ -25,6 +26,32 @@ class MPlayer(
     init {
         player.prepare()
         player.addListener(Listener(this))
+    }
+
+    fun cyclePause() = if (isPlaying) {
+        pause()
+    } else {
+        play()
+    }
+
+    fun current(): Spark.MusicResponse.Current? {
+        val currentSong = player.currentSong()
+            ?: return null
+        val totalDurationMs = player.totalDurationMs
+            ?: return null
+        val positionMs = player.positionMs
+        return Spark.MusicResponse.Current(
+            title = currentSong.title,
+            chapter = null,
+            playing = player.isPlaying,
+            volume = player.volume.toDouble() * 100,
+            progress = (positionMs.toDouble() / totalDurationMs) * 100,
+            playbackTime = positionMs.milliseconds,
+            duration = totalDurationMs.milliseconds,
+            categories = currentSong.categories,
+            index = 0U,
+            next = player.nextSongs(1U).firstOrNull()
+        )
     }
 
     fun queueMediaItems(mediaItems: Sequence<ParcelableMediaItem>) {

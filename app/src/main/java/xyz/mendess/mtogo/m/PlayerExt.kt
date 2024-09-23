@@ -32,6 +32,16 @@ fun Player.nextSongs(count: UInt): List<String> {
         .toList()
 }
 
+fun Player.prevSongs(count: UInt): List<String> {
+    return (0..<currentMediaItemIndex)
+        .reversed()
+        .drop(1)
+        .take(count.toInt())
+        .map { getMediaItemAt(it) }
+        .map { it.mediaMetadata.title?.toString() ?: "No title" }
+        .toList()
+}
+
 fun Player.currentSong(): CurrentSong? {
     return mediaMetadata.toCurrentSong()
 }
