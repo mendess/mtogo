@@ -40,12 +40,16 @@ class MediaItems : Closeable {
 
     suspend fun fromSearch(query: String): Result<ParcelableMediaItem> {
         Log.d("MediaItems", "queueing search $query")
-        val query = withContext(Dispatchers.IO) { URLEncoder.encode(query, "utf-8") }
-        return runCatching {
-            val resp = http.get("https://mendess.xyz/api/v1/playlist/search/${query}")
-            val id = resp.bodyAsText()
-            Log.d("MediaItems", "id: $id")
-            fromVideoId(VideoId(id))
+        return if (query.startsWith("http")) {
+            Result.success(fromUrl(query))
+        } else {
+            val query = withContext(Dispatchers.IO) { URLEncoder.encode(query, "utf-8") }
+            runCatching {
+                val resp = http.get("https://mendess.xyz/api/v1/playlist/search/${query}")
+                val id = resp.bodyAsText()
+                Log.d("MediaItems", "id: $id")
+                fromVideoId(VideoId(id))
+            }
         }
     }
 
@@ -68,7 +72,7 @@ class MediaItems : Closeable {
         )
     }
 
-    suspend fun fromUrl(url: String): ParcelableMediaItem {
+    private suspend fun fromUrl(url: String): ParcelableMediaItem {
         val uri = Uri.parse(url)
         val vidId = if (uri.host?.contains(YT_SHORT_HOST) == true) {
             uri.path?.let(::VideoId)
