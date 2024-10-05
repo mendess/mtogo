@@ -7,6 +7,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -33,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -40,10 +43,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mendess.mtogo.R
 import qrcode.QRCode
-import xyz.mendess.mtogo.spark.Credentials
 import xyz.mendess.mtogo.data.StoredCredentialsState
+import xyz.mendess.mtogo.spark.Credentials
 import xyz.mendess.mtogo.viewmodels.BackendViewModel
 import java.util.UUID
+
 
 @Composable
 fun SettingsScreen(viewModel: BackendViewModel, darkTheme: Boolean, modifier: Modifier) {
@@ -58,6 +62,15 @@ fun SettingsScreen(viewModel: BackendViewModel, darkTheme: Boolean, modifier: Mo
                     Spacer(modifier = modifier.size(10.dp))
                     MusicSessionQRScreen(it.credentials, viewModel, darkTheme, modifier)
                 }
+            }
+        }
+        item(key = "app-version") {
+            Box(modifier = modifier.fillParentMaxWidth(), contentAlignment = Alignment.Center) {
+                Text(
+                    "version: ${viewModel.appVersion}",
+                    fontWeight = FontWeight.Light,
+                    fontStyle = FontStyle.Italic
+                )
             }
         }
     }

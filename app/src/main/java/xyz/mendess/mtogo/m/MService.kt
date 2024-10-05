@@ -22,7 +22,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.guava.future
 import xyz.mendess.mtogo.data.Settings
 import xyz.mendess.mtogo.spark.SparkConnection
-import xyz.mendess.mtogo.util.dataStore
 import xyz.mendess.mtogo.util.hostname
 import kotlin.properties.ReadOnlyProperty
 
@@ -91,7 +90,7 @@ class MService : MediaSessionService() {
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
-        val settings = Settings(dataStore)
+        val settings = Settings(this, scope)
         val player = ExoPlayer.Builder(this)
             .setDeviceVolumeControlEnabled(true)
             .setHandleAudioBecomingNoisy(true)

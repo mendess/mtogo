@@ -1,8 +1,17 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     kotlin("plugin.serialization") version "2.0.20"
 }
+
+
+val gradleProperties = Properties().apply {
+    load(FileInputStream(rootProject.file("local.properties")))
+}
+
 
 android {
     namespace = "com.mendess.mtogo"
@@ -13,7 +22,7 @@ android {
         minSdk = 29
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -21,8 +30,18 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release-signing-key.jks")
+            storePassword = gradleProperties["RELEASE_STORE_PASSWORD"] as String
+            keyAlias = gradleProperties["RELEASE_KEY_ALIAS"] as String
+            keyPassword = gradleProperties["RELEASE_KEY_PASSWORD"] as String
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
