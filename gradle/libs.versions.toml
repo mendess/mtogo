@@ -1,5 +1,6 @@
 [versions]
 agp = "8.6.1"
+appProjected = "1.4.0"
 coilVersion = "2.7.0"
 coreSplashscreen = "1.0.1"
 datastorePreferences = "1.1.1"
@@ -22,6 +23,8 @@ socketIoVersion = "2.1.1"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-app = { module = "androidx.car.app:app", version.ref = "appProjected" }
+androidx-app-projected = { module = "androidx.car.app:app-projected", version.ref = "appProjected" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }

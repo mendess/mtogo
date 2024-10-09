@@ -99,6 +99,11 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.qrcode.kotlin)
     implementation(libs.socket.io.client)
+    implementation(libs.androidx.app)
+    implementation(libs.androidx.app.projected)
+//        // For Android Automotive specific functionality
+//        implementation("androidx.car.app:app-automotive:1.4.0")
+
 
     implementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.junit)
