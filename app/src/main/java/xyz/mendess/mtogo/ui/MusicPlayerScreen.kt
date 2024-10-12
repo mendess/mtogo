@@ -48,8 +48,8 @@ import coil.compose.AsyncImage
 import com.mendess.mtogo.R
 import xyz.mendess.mtogo.m.CurrentSong
 import xyz.mendess.mtogo.m.MPlayerController
-import xyz.mendess.mtogo.m.PlayState
-import xyz.mendess.mtogo.util.AutoSizeText
+import xyz.mendess.mtogo.m.daemon.PlayState
+import xyz.mendess.mtogo.ui.util.AutoSizeText
 import xyz.mendess.mtogo.util.identity
 import xyz.mendess.mtogo.util.toInt
 

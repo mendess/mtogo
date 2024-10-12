@@ -4,7 +4,7 @@ import android.net.Uri
 import androidx.media3.common.C
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import xyz.mendess.mtogo.util.MediaItems
+import xyz.mendess.mtogo.m.daemon.MediaItems
 
 data class CurrentSong(
     val title: String,

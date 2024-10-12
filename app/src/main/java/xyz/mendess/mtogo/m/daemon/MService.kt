@@ -1,8 +1,7 @@
-package xyz.mendess.mtogo.m
+package xyz.mendess.mtogo.m.daemon
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.Parcelable
 import androidx.annotation.OptIn
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -23,6 +22,8 @@ import kotlinx.coroutines.guava.future
 import xyz.mendess.mtogo.data.Settings
 import xyz.mendess.mtogo.spark.SparkConnection
 import xyz.mendess.mtogo.util.hostname
+import xyz.mendess.mtogo.util.parcelable
+import xyz.mendess.mtogo.util.parcelableList
 import kotlin.properties.ReadOnlyProperty
 
 typealias Action = suspend (MPlayer, Bundle) -> SessionResult
@@ -45,15 +46,15 @@ object CustomCommands {
     // deserialization error
     private val deError = SessionResult(SessionError.ERROR_BAD_VALUE)
 
+    val QUEUE_PLAYLIST_ITEMS by command { session, args ->
+        val mediaItems = args.parcelableList<ParcelableMediaItem>("items") ?: return@command deError
+        session.queueMediaItems(mediaItems.asSequence())
+        SessionResult(SessionResult.RESULT_SUCCESS)
+    }
     val QUEUE_PLAYLIST_ITEM by command { session: MPlayer, args: Bundle ->
         session.queueMediaItem(
             mediaItem = args.parcelable("item") ?: return@command deError,
         )
-        SessionResult(SessionResult.RESULT_SUCCESS)
-    }
-    val QUEUE_PLAYLIST_ITEMS by command { session, args ->
-        val mediaItems = args.parcelableList<ParcelableMediaItem>("items") ?: return@command deError
-        session.queueMediaItems(mediaItems.asSequence())
         SessionResult(SessionResult.RESULT_SUCCESS)
     }
     val LAST_QUEUE by command { session, _ ->
@@ -72,14 +73,6 @@ object CustomCommands {
     )
 }
 
-@Suppress("DEPRECATION")
-private inline fun <reified T : Parcelable> Bundle.parcelable(key: String): T? =
-    getParcelable(key) as T?
-
-@Suppress("DEPRECATION")
-private inline fun <reified T : Parcelable> Bundle.parcelableList(key: String): ArrayList<T>? =
-    getParcelableArrayList(key)
-
 // TODO: https://developer.android.com/media/media3/session/background-playback#resumption
 class MService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
@@ -91,14 +84,13 @@ class MService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         val settings = Settings(this, scope)
+        val mediaItems = MediaItems(settings, scope, this)
         val player = ExoPlayer.Builder(this)
             .setDeviceVolumeControlEnabled(true)
             .setHandleAudioBecomingNoisy(true)
             .build()
-            .apply {
-                repeatMode = Player.REPEAT_MODE_ALL
-            }
-            .let { MPlayer(scope, it) }
+            .apply { repeatMode = Player.REPEAT_MODE_ALL }
+            .let { MPlayer(scope, it, mediaItems, this) }
         mediaSession = MediaSession.Builder(this, player)
             .setCallback(object : MediaSession.Callback {
                 @OptIn(UnstableApi::class)
@@ -125,7 +117,13 @@ class MService : MediaSessionService() {
 
             })
             .build()
-        spark = SparkConnection(settings, hostname, player, scope)
+        spark = SparkConnection(
+            settings,
+            hostname,
+            mediaItems,
+            player,
+            scope
+        )
     }
 
     // The user dismissed the app from the recent tasks

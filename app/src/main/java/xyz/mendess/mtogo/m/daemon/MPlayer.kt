@@ -1,5 +1,8 @@
-package xyz.mendess.mtogo.m
+@file:Suppress("NAME_SHADOWING")
 
+package xyz.mendess.mtogo.m.daemon
+
+import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import kotlinx.coroutines.CoroutineScope
@@ -7,9 +10,17 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.CONFLATED
 import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toCollection
 import kotlinx.coroutines.launch
+import xyz.mendess.mtogo.m.currentSong
+import xyz.mendess.mtogo.m.nextSongs
+import xyz.mendess.mtogo.m.positionMs
+import xyz.mendess.mtogo.m.totalDurationMs
 import xyz.mendess.mtogo.spark.Spark
-import xyz.mendess.mtogo.util.MediaItems
+import xyz.mendess.mtogo.util.mapConcurrent
 import java.io.Closeable
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
@@ -25,8 +36,9 @@ fun <T> OneShot(): OneShot<T> = Channel(CONFLATED)
 class MPlayer(
     val scope: CoroutineScope,
     private val player: Player,
+    private val mediaItems: MediaItems,
+    private val context: Context,
 ) : Player by player, Closeable {
-    val mediaItems = MediaItems()
     fun cyclePause() = if (isPlaying) {
         pause()
     } else {
@@ -69,22 +81,34 @@ class MPlayer(
         return ((player.deviceVolume * 100).toDouble() / 30)
     }
 
-    suspend fun queueMediaItems(mediaItems: Sequence<ParcelableMediaItem>) {
+    suspend fun queueMediaItems(items: Sequence<ParcelableMediaItem>) {
         val oneshot = OneShot<Spark.MusicResponse.QueueSummary>()
-        mediaItemQueue.send(mediaItems.map(ParcelableMediaItem::toMediaItem) to oneshot)
+        val isAlmostEmpty = mediaItemCount < 2
+        val itemFlow = items
+            .mapIndexed { i, item -> i to item }
+            .asFlow()
+            .mapConcurrent(scope, size = 2U) { (i, item) ->
+                mediaItems.fromParcelable(context, item, isAlmostEmpty && i < 2)
+            }
+        mediaItemQueue.send(itemFlow to oneshot)
         oneshot.receive()
         lastQueue = null
     }
 
     suspend fun queueMediaItem(mediaItem: ParcelableMediaItem): Spark.MusicResponse.QueueSummary {
+        val item = mediaItems.fromParcelable(
+            context,
+            mediaItem,
+            caching = player.mediaItemCount < 2
+        )
         val oneshot = OneShot<Spark.MusicResponse.QueueSummary>()
-        mediaItemQueue.send(sequenceOf(mediaItem.toMediaItem()) to oneshot)
+        mediaItemQueue.send(flowOf(item) to oneshot)
         return oneshot.receive()
     }
 
     private val mediaItemQueue =
-        Channel<Pair<Sequence<MediaItem>, OneShot<Spark.MusicResponse.QueueSummary>?>>(
-            capacity = 500,
+        Channel<Pair<Flow<MediaItem>, OneShot<Spark.MusicResponse.QueueSummary>>>(
+            capacity = 200,
             BufferOverflow.SUSPEND
         )
 
@@ -103,18 +127,14 @@ class MPlayer(
         scope.launch {
             mediaItemQueue.consumeEach { (items, oneshot) ->
                 if (player.mediaItemCount == 0) { // if there is nothing playing just set the items
-                    player.setMediaItems(items.toList())
+                    player.setMediaItems(items.toCollection(ArrayList()))
+                    oneshot.send(
+                        Spark.MusicResponse.QueueSummary(from = 0U, movedTo = 0U, current = 0U)
+                    )
                 } else {
-                    val channel =
-                        if (oneshot != null) OneShot<Spark.MusicResponse.QueueSummary>() else null
-                    for (i in items) {
-                        queueMediaItemImpl(i, channel)
-                    }
-                    oneshot?.let { oneshot ->
-                        channel?.let { channel ->
-                            oneshot.send(channel.receive())
-                        }
-                    }
+                    val channel = OneShot<Spark.MusicResponse.QueueSummary>()
+                    items.collect { queueMediaItemImpl(it, channel) }
+                    oneshot.send(channel.receive())
                 }
             }
         }
@@ -122,7 +142,7 @@ class MPlayer(
 
     private fun queueMediaItemImpl(
         mediaItem: MediaItem,
-        oneshot: OneShot<Spark.MusicResponse.QueueSummary>?
+        oneshot: OneShot<Spark.MusicResponse.QueueSummary>
     ) {
         val moveTo = _lastQueue.updateAndGet {
             (if (it == LAST_QUEUE_NULL) player.currentMediaItemIndex else it) + 1
@@ -144,11 +164,10 @@ class MPlayer(
                 current = currentPosition,
             )
         }
-        oneshot?.trySend(summary)
+        oneshot.trySend(summary)
     }
 
     override fun close() {
-        mediaItems.close()
         player.release()
     }
 
@@ -158,6 +177,13 @@ class MPlayer(
                 viewModel._lastQueue.updateAndGet {
                     if (it <= viewModel.player.currentMediaItemIndex) -1
                     else it
+                }
+                with(viewModel.player) {
+                    val nextItem = (currentMediaItemIndex + 1) % mediaItemCount
+                    val mediaItem = viewModel
+                        .mediaItems
+                        .caching(viewModel.context, getMediaItemAt(nextItem))
+                    if (mediaItem != null) replaceMediaItem(nextItem, mediaItem)
                 }
             }
         }

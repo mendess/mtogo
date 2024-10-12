@@ -1,9 +1,7 @@
 package xyz.mendess.mtogo.m
 
-import android.net.Uri
+import android.content.Context
 import android.os.Bundle
-import android.os.Parcel
-import android.os.Parcelable
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -16,20 +14,24 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import xyz.mendess.mtogo.m.CustomCommands.sendCustomCommand
-import xyz.mendess.mtogo.util.MediaItems
-import xyz.mendess.mtogo.util.MediaItems.Companion.MUSIC_METADATA_CATEGORIES
-import xyz.mendess.mtogo.util.MediaItems.Companion.MUSIC_METADATA_THUMBNAIL_ID
+import xyz.mendess.mtogo.data.Settings
+import xyz.mendess.mtogo.m.daemon.CustomCommands
+import xyz.mendess.mtogo.m.daemon.CustomCommands.sendCustomCommand
+import xyz.mendess.mtogo.m.daemon.MediaItems
+import xyz.mendess.mtogo.m.daemon.ParcelableMediaItem
+import xyz.mendess.mtogo.m.daemon.PlayState
 import xyz.mendess.mtogo.util.await
 import xyz.mendess.mtogo.viewmodels.Playlist
 import kotlin.time.Duration.Companion.seconds
 
 class MPlayerController(
-    val scope: CoroutineScope,
     private val player: MediaController,
+    settings: Settings,
+    context: Context,
+    val scope: CoroutineScope,
 ) : Player by player {
 
-    val mediaItems = MediaItems()
+    val mediaItems = MediaItems(settings, scope, context)
 
     private val _currentSong: MutableStateFlow<CurrentSong?> = MutableStateFlow(null)
     val currentSong = _currentSong.asStateFlow()
@@ -68,15 +70,10 @@ class MPlayerController(
         }
     }
 
-    fun queuePlaylistItem(song: Playlist.Song, move: Boolean = true) {
+    fun queuePlaylistItems(songs: Sequence<Playlist.Song>, callback: suspend () -> Unit = {}) {
         scope.launch {
-            queueMediaItem(mediaItems.fromPlaylistSong(song), move, notBatching = true)
-        }
-    }
-
-    fun queuePlaylistItems(songs: Sequence<Playlist.Song>) {
-        scope.launch {
-            queueMediaItems(songs.map(mediaItems::fromPlaylistSong))
+            queueMediaItems(songs.map { ParcelableMediaItem.PlaylistItem(it.id) })
+            callback()
         }
     }
 
@@ -86,16 +83,24 @@ class MPlayerController(
         }).await()
     }
 
+    fun queuePlaylistItem(song: Playlist.Song, move: Boolean = true, callback: suspend () -> Unit = {}) {
+        scope.launch {
+            queueMediaItem(ParcelableMediaItem.PlaylistItem(song.id), move, notBatching = true, callback)
+        }
+    }
+
     suspend fun queueMediaItem(
         item: ParcelableMediaItem,
         move: Boolean = true,
-        notBatching: Boolean = true
+        notBatching: Boolean = true,
+        callback: suspend () -> Unit = {}
     ) {
         player.sendCustomCommand(CustomCommands.QUEUE_PLAYLIST_ITEM, Bundle().apply {
             putParcelable("item", item)
             putBoolean("move", move)
             putBoolean("notBatching", notBatching)
         }).await()
+        callback()
     }
 
     private suspend fun getLastQueue(): UInt? {
@@ -145,6 +150,7 @@ class MPlayerController(
             when (playbackState) {
                 Player.STATE_ENDED -> {
                 }
+
                 Player.STATE_IDLE -> {
                     if (viewModel.player.playerError != null) {
                         viewModel.player.removeMediaItem(viewModel.player.currentMediaItemIndex)
@@ -152,9 +158,11 @@ class MPlayerController(
                         viewModel.player.play()
                     }
                 }
+
                 Player.STATE_READY -> {
                     viewModel._playState.value = PlayState.Ready
                 }
+
                 Player.STATE_BUFFERING -> {
                     viewModel._playState.value = PlayState.Buffering
                 }
@@ -170,58 +178,3 @@ class MPlayerController(
     }
 }
 
-data class ParcelableMediaItem(
-    val uri: Uri,
-    val title: String? = null,
-    val thumbnailUri: Uri? = null,
-    val categories: List<String> = emptyList(),
-) : Parcelable {
-    constructor(parcel: Parcel) : this(
-        uri = Uri.parse(parcel.readString()),
-        title = parcel.readString()!!,
-        thumbnailUri = Uri.parse(parcel.readString()),
-        categories = mutableListOf<String>().apply {
-            parcel.readStringList(this)
-        }
-    )
-
-    override fun describeContents(): Int = 0
-
-    override fun writeToParcel(parcel: Parcel, p1: Int) {
-        parcel.writeString(uri.toString())
-        parcel.writeString(title)
-        parcel.writeString(thumbnailUri.toString())
-        parcel.writeStringList(categories)
-    }
-
-    companion object CREATOR : Parcelable.Creator<ParcelableMediaItem> {
-        override fun createFromParcel(parcel: Parcel): ParcelableMediaItem {
-            return ParcelableMediaItem(parcel)
-        }
-
-        override fun newArray(size: Int): Array<ParcelableMediaItem?> {
-            return arrayOfNulls(size)
-        }
-    }
-
-    fun toMediaItem(): MediaItem = MediaItem.Builder().run {
-        setMediaMetadata(MediaMetadata.Builder().run {
-            if (title != null) setTitle(title)
-            setUri(uri)
-            setExtras(Bundle().apply {
-                if (categories.isNotEmpty()) putStringArrayList(
-                    MUSIC_METADATA_CATEGORIES,
-                    ArrayList(categories)
-                )
-                if (thumbnailUri != null) putString(
-                    MUSIC_METADATA_THUMBNAIL_ID,
-                    thumbnailUri.toString(),
-                )
-            })
-            build()
-        })
-        setUri(uri)
-        build()
-    }
-
-}

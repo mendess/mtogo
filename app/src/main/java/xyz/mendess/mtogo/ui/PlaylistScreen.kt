@@ -2,7 +2,8 @@
 
 package xyz.mendess.mtogo.ui
 
-import android.util.Log
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,8 +36,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mendess.mtogo.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import xyz.mendess.mtogo.m.MPlayerController
-import xyz.mendess.mtogo.util.LongPressButton
+import xyz.mendess.mtogo.ui.util.LongPressButton
 import xyz.mendess.mtogo.viewmodels.Playlist
 import xyz.mendess.mtogo.viewmodels.PlaylistLoadingState
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
@@ -79,6 +82,7 @@ private fun PlaylistTabsContent(
     var mode by remember { mutableStateOf(Mode.Songs) }
     val searchBuffer = remember { mutableStateOf("") }
     val icon = remember { mutableIntStateOf(R.drawable.baseline_shuffle_24) }
+    val context = LocalContext.current
 
     val onQueue = { searchBuffer.value = "" }
 
@@ -91,17 +95,23 @@ private fun PlaylistTabsContent(
                 colors = ButtonDefaults.buttonColors()
                     .copy(containerColor = MaterialTheme.colorScheme.secondary),
                 onClick = {
-                    mplayer.queuePlaylistItems(list.songs.shuffled().asSequence())
-                    icon.value = R.drawable.baseline_shuffle_24
+                    val t = context.toastQueueing()
+                    mplayer.queuePlaylistItems(list.songs.shuffled().asSequence()) {
+                        context.toastQueued(t)
+                    }
+                    icon.intValue = R.drawable.baseline_shuffle_24
                 },
                 onLongPress = {
-                    mplayer.queuePlaylistItems(list.songs.asSequence())
-                    icon.value = R.drawable.baseline_unshuffle_alt_24
+                    val t = context.toastQueueing()
+                    mplayer.queuePlaylistItems(list.songs.asSequence()) {
+                        context.toastQueued(t)
+                    }
+                    icon.intValue = R.drawable.baseline_unshuffle_alt_24
                 },
                 modifier = modifier,
             ) {
                 Icon(
-                    painter = painterResource(icon.value),
+                    painter = painterResource(icon.intValue),
                     contentDescription = null,
                 )
             }
@@ -157,6 +167,7 @@ private fun PlaylistContent(
     onQueue: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val songs = list.songs.filter { it.title.contains(filter) }
     Column(modifier = modifier) {
         Spacer(modifier = modifier.padding(10.dp))
@@ -168,7 +179,13 @@ private fun PlaylistContent(
                     QueueButton(
                         text = song.title,
                         modifier = modifier
-                    ) { mplayer.queuePlaylistItem(song); onQueue() }
+                    ) {
+                        val t = context.toastQueueing()
+                        mplayer.queuePlaylistItem(song) {
+                            context.toastQueued(t)
+                        }
+                        onQueue()
+                    }
                 }
             }
         }
@@ -184,6 +201,7 @@ private fun CategoriesContent(
     modifier: Modifier = Modifier
 ) {
     val categories = list.categories.filter { it.first.contains(filter) }
+    val context = LocalContext.current
     LazyColumn(modifier.padding(20.dp), verticalArrangement = Arrangement.Center) {
         if (categories.isEmpty()) {
             item(key = "search") { QueueSearchButton(mplayer, filter, onQueue, modifier) }
@@ -193,9 +211,12 @@ private fun CategoriesContent(
                     text = "${category.first} (${category.second.size})",
                     modifier = modifier
                 ) {
+                    val t = context.toastQueueing()
                     mplayer.queuePlaylistItems(
                         category.second.asIterable().shuffled().asSequence()
-                    )
+                    ) {
+                        context.toastQueued(t)
+                    }
                     onQueue()
                 }
             }
@@ -230,19 +251,37 @@ private fun QueueSearchButton(
     onQueue: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     QueueButton(
         text = search,
         modifier = modifier
     ) {
         mplayer.scope.launch(Dispatchers.Main) {
-            mplayer.mediaItems.fromSearch(search)
+            mplayer.mediaItems.parcelableFromSearch(search)
                 .onSuccess {
-                    mplayer.queueMediaItem(it, notBatching = true)
+                    val t = context.toastQueueing()
+                    mplayer.queueMediaItem(it, notBatching = true) {
+                        context.toastQueued(t)
+                    }
                 }
                 .onFailure {
-                    Log.d("PlaylistScreen", "failed to make media item for searching: $it")
+                    Toast.makeText(
+                        context,
+                        "failed to search for $search: ${it.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
         }
         onQueue()
+    }
+}
+
+fun Context.toastQueueing(): Toast =
+    Toast.makeText(this, "queueing...", Toast.LENGTH_LONG).apply { show() }
+
+suspend fun Context.toastQueued(old: Toast) {
+    withContext(Dispatchers.Main) {
+        old.cancel()
+        Toast.makeText(this@toastQueued, "queued!", Toast.LENGTH_SHORT).show()
     }
 }

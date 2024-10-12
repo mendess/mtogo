@@ -36,14 +36,14 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.mendess.mtogo.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import xyz.mendess.mtogo.m.MPlayerController
-import xyz.mendess.mtogo.m.MService
+import xyz.mendess.mtogo.m.daemon.MService
 import xyz.mendess.mtogo.ui.theme.MToGoTheme
-import xyz.mendess.mtogo.viewmodels.BackendViewModel
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
+import xyz.mendess.mtogo.viewmodels.SettingsViewModel
 
 class MainActivity : ComponentActivity() {
     private val playlistViewModel: PlaylistViewModel by viewModels()
-    private val backendViewModel: BackendViewModel by viewModels { BackendViewModel.Factory }
+    private val settingsViewModel: SettingsViewModel by viewModels { SettingsViewModel.Factory }
 
     private val mplayer: MutableStateFlow<MPlayerController?> = MutableStateFlow(
         null
@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
             val mplayer by this@MainActivity.mplayer.collectAsStateWithLifecycle()
             when (val mplayer = mplayer) {
                 null -> {}
-                else -> Screen(playlistViewModel, mplayer, backendViewModel)
+                else -> Screen(playlistViewModel, mplayer, settingsViewModel)
             }
         }
     }
@@ -67,7 +67,12 @@ class MainActivity : ComponentActivity() {
         val sessionToken = SessionToken(this, ComponentName(this, MService::class.java))
         controllerFuture = MediaController.Builder(this, sessionToken).buildAsync().apply {
             addListener({
-                mplayer.value = MPlayerController(this@MainActivity.lifecycleScope, get())
+                mplayer.value = MPlayerController(
+                    get(),
+                    settingsViewModel.settings,
+                    this@MainActivity,
+                    this@MainActivity.lifecycleScope
+                )
             }, MoreExecutors.directExecutor())
         }
     }
@@ -82,7 +87,7 @@ class MainActivity : ComponentActivity() {
 fun Screen(
     playlistViewModel: PlaylistViewModel,
     mplayer: MPlayerController,
-    backendViewModel: BackendViewModel,
+    settingsViewModel: SettingsViewModel,
     modifier: Modifier = Modifier,
     darkTheme: Boolean = isSystemInDarkTheme()
 ) {
@@ -98,7 +103,7 @@ fun Screen(
                 TabScreen(
                     playlistViewModel,
                     mplayer,
-                    backendViewModel,
+                    settingsViewModel,
                     darkTheme,
                     Modifier.padding(innerPadding)
                 )
@@ -111,7 +116,7 @@ fun Screen(
 fun TabScreen(
     playlistViewModel: PlaylistViewModel,
     mplayer: MPlayerController,
-    backendViewModel: BackendViewModel,
+    settingsViewModel: SettingsViewModel,
     darkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -130,7 +135,7 @@ fun TabScreen(
         when (tabIndex) {
             0 -> PlayerScreen(mplayer, darkTheme, modifier)
             1 -> PlaylistScreen(playlistViewModel, mplayer, modifier)
-            2 -> SettingsScreen(backendViewModel, darkTheme, modifier)
+            2 -> SettingsScreen(settingsViewModel, darkTheme, modifier)
         }
     }
 }

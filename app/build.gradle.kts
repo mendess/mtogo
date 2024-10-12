@@ -101,6 +101,7 @@ dependencies {
     implementation(libs.socket.io.client)
 
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.documentfile)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

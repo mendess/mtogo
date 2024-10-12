@@ -17,7 +17,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package xyz.mendess.mtogo.util
+package xyz.mendess.mtogo.ui.util
 
 import android.util.Log
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -64,7 +64,7 @@ import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAll
 import androidx.compose.ui.util.fastFilter
-import xyz.mendess.mtogo.util.SuggestedFontSizesStatus.Companion.validSuggestedFontSizes
+import xyz.mendess.mtogo.ui.util.SuggestedFontSizesStatus.Companion.validSuggestedFontSizes
 import kotlin.math.min
 import kotlin.math.roundToInt
 

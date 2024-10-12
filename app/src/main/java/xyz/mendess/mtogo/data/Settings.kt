@@ -25,6 +25,7 @@ import java.util.UUID
 
 private val SAVED_STATE_DOMAIN = stringPreferencesKey("domain")
 private val SAVED_STATE_TOKEN = stringPreferencesKey("token")
+private val SAVED_STATE_MUSIC_CACHE_DIR = stringPreferencesKey("music-cache")
 
 sealed interface StoredCredentialsState {
     data object Loading : StoredCredentialsState
@@ -64,12 +65,30 @@ class Settings(context: Context, private val scope: CoroutineScope) {
         }
     }
 
+    val cacheMusicDir: StateFlow<Uri?> = dataStore
+        .data
+        .map { preferences -> preferences[SAVED_STATE_MUSIC_CACHE_DIR]?.let(Uri::parse) }
+        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = null)
+
     fun saveBackendConnection(domain: Uri, token: UUID) {
         scope.launch {
             Log.d("Settings", "storing to disk: $domain | $token")
             dataStore.edit { preferences ->
                 preferences[SAVED_STATE_DOMAIN] = domain.toString()
                 preferences[SAVED_STATE_TOKEN] = token.toString()
+            }
+        }
+    }
+
+    fun setCacheMusicDir(uri: Uri?) {
+        scope.launch {
+            Log.d("Settings", "storing cache folder to disk: $uri")
+            dataStore.edit { preferences ->
+                if (uri == null) {
+                    preferences.remove(SAVED_STATE_MUSIC_CACHE_DIR)
+                } else {
+                    preferences[SAVED_STATE_MUSIC_CACHE_DIR] = uri.toString()
+                }
             }
         }
     }

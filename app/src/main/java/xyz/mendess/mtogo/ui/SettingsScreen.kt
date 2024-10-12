@@ -2,17 +2,20 @@
 
 package xyz.mendess.mtogo.ui
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,8 +24,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -33,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -45,32 +52,82 @@ import com.mendess.mtogo.R
 import qrcode.QRCode
 import xyz.mendess.mtogo.data.StoredCredentialsState
 import xyz.mendess.mtogo.spark.Credentials
-import xyz.mendess.mtogo.viewmodels.BackendViewModel
+import xyz.mendess.mtogo.viewmodels.SettingsViewModel
+import xyz.mendess.mtogo.viewmodels.orZero
 import java.util.UUID
 
 
 @Composable
-fun SettingsScreen(viewModel: BackendViewModel, darkTheme: Boolean, modifier: Modifier) {
+fun SettingsScreen(viewModel: SettingsViewModel, darkTheme: Boolean, modifier: Modifier) {
     val currentCredentials by viewModel.credentials.collectAsStateWithLifecycle()
-    LazyColumn(modifier = modifier.padding(top = 5.dp)) {
-        (currentCredentials as? StoredCredentialsState.Loaded)?.let {
-            item(key = "connect-screen") {
-                ConnectScreen(it.credentials, connect = viewModel::connect, modifier)
-            }
-            if (it.credentials != null) {
-                item(key = "session-qr") {
-                    Spacer(modifier = modifier.size(10.dp))
-                    MusicSessionQRScreen(it.credentials, viewModel, darkTheme, modifier)
-                }
-            }
+    val cacheMusicDir by viewModel.settings.cacheMusicDir.collectAsStateWithLifecycle()
+    val cacheMusicDirSize by viewModel.cachedMusicDirectorySize.collectAsStateWithLifecycle(null)
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) {
+        if (it != null) {
+            // take persistable Uri Permission for future use
+            val takeFlags =
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(it, takeFlags)
         }
-        item(key = "app-version") {
-            Box(modifier = modifier.fillParentMaxWidth(), contentAlignment = Alignment.Center) {
+        viewModel.settings.setCacheMusicDir(it)
+    }
+
+    Scaffold(
+        bottomBar = {
+            Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(
                     "version: ${viewModel.appVersion}",
                     fontWeight = FontWeight.Light,
                     fontStyle = FontStyle.Italic
                 )
+            }
+        }
+    )
+    { innerPadding ->
+        LazyColumn(
+            modifier = modifier
+                .consumeWindowInsets(innerPadding)
+                .padding(top = 5.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            (currentCredentials as? StoredCredentialsState.Loaded)?.let {
+                item(key = "connect-screen") {
+                    ConnectScreen(
+                        it.credentials,
+                        connect = viewModel.settings::saveBackendConnection,
+                        modifier
+                    )
+                }
+                if (it.credentials != null) {
+                    item(key = "session-qr") {
+                        Divider(modifier)
+                        MusicSessionQRScreen(it.credentials, viewModel, darkTheme, modifier)
+                    }
+                }
+            }
+            item(key = "spacer1") { Divider(modifier) }
+            item(key = "storage-switch") {
+                Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("cache playlist files")
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    modifier = modifier.fillMaxWidth()
+                ) {
+                    Switch(checked = cacheMusicDir != null, onCheckedChange = {
+                        if (it) {
+                            launcher.launch(null)
+                        } else {
+                            viewModel.settings.setCacheMusicDir(null)
+                        }
+                    })
+                    Column {
+                        Text(cacheMusicDir?.path?.split(':')?.get(1) ?: "None")
+                        Text(cacheMusicDirSize.orZero().format())
+                    }
+                }
             }
         }
     }
@@ -173,19 +230,22 @@ sealed interface QrState {
 @Composable
 private fun MusicSessionQRScreen(
     credentials: Credentials,
-    viewmodel: BackendViewModel,
+    viewmodel: SettingsViewModel,
     darkTheme: Boolean,
     modifier: Modifier
 ) {
     val qr = remember { mutableStateOf<QrState>(QrState.Loading) }
     LaunchedEffect("create-music-session") {
-        viewmodel.createNewSession(credentials).onSuccess {
+        viewmodel.newMusicSession(credentials).onSuccess {
             it?.let { (uri, id) -> qr.value = QrState.Loaded(uri, id) }
         }.onFailure {
             Log.d("SettingsScreen", "failed to create music session: $it")
         }
     }
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier.fillMaxWidth()) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.fillMaxWidth()
+    ) {
         Text("session id")
         when (val state = qr.value) {
             QrState.Loading -> {
@@ -215,4 +275,14 @@ private fun MusicSessionQRScreen(
             }
         }
     }
+}
+
+@Composable
+private fun Divider(modifier: Modifier = Modifier) {
+    HorizontalDivider(
+        thickness = 5.dp,
+        modifier = modifier
+            .padding(vertical = 10.dp)
+            .fillMaxWidth(fraction = 0.8f)
+    )
 }

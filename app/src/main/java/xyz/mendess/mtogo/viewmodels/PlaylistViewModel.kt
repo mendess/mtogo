@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import okhttp3.internal.closeQuietly
 
 const val PLAYLIST_URL =
     "https://raw.githubusercontent.com/mendess/spell-book/master/runes/m/playlist"
@@ -25,15 +24,20 @@ sealed interface PlaylistLoadingState {
     data class Error(val throwable: Throwable) : PlaylistLoadingState
 }
 
+suspend fun fetchPlaylist(http: HttpClient): Result<Playlist> {
+    return runCatching {
+        Playlist.fromStr(http.get(PLAYLIST_URL).bodyAsText())
+    }
+}
+
 class PlaylistViewModel(default: List<Playlist.Song> = emptyList()) : ViewModel() {
-    private val _playlistFlow: MutableStateFlow<PlaylistLoadingState> =
-        MutableStateFlow(
-            if (default.isEmpty()) {
-                PlaylistLoadingState.Loading
-            } else {
-                PlaylistLoadingState.Success(Playlist(default))
-            }
-        )
+    private val _playlistFlow = MutableStateFlow(
+        if (default.isEmpty()) {
+            PlaylistLoadingState.Loading
+        } else {
+            PlaylistLoadingState.Success(Playlist(default))
+        }
+    )
 
     val playlistFlow
         get() = _playlistFlow.asStateFlow()
@@ -41,16 +45,12 @@ class PlaylistViewModel(default: List<Playlist.Song> = emptyList()) : ViewModel(
     init {
         if (playlistFlow.value is PlaylistLoadingState.Loading) {
             viewModelScope.launch {
-                val client = HttpClient(CIO)
-                _playlistFlow.value = try {
-                    PlaylistLoadingState.Success(
-                        Playlist.fromStr(client.get(PLAYLIST_URL).bodyAsText())
+                _playlistFlow.value = HttpClient(CIO)
+                    .use { fetchPlaylist(it) }
+                    .fold(
+                        onSuccess = PlaylistLoadingState::Success,
+                        onFailure = PlaylistLoadingState::Error,
                     )
-                } catch (e: Exception) {
-                    PlaylistLoadingState.Error(e)
-                } finally {
-                    client.closeQuietly()
-                }
             }
         }
     }
@@ -62,6 +62,7 @@ class PlaylistViewModel(default: List<Playlist.Song> = emptyList()) : ViewModel(
 
 data class Playlist(val songs: List<Song>) {
     fun findByName(query: String): Song? = songs.find { it.title == query }
+    fun findById(id: VideoId): Song? = songs.find { it.id == id }
 
     companion object {
         fun fromStr(s: String) = Playlist(
@@ -101,6 +102,8 @@ data class Playlist(val songs: List<Song>) {
 @JvmInline
 value class VideoId(private val id: String) : Parcelable {
     constructor(parcel: Parcel) : this(parcel.readString()!!)
+
+    fun get(): String = id
 
     fun toAudioUri(): Uri =
         Uri.parse("https://mendess.xyz/api/v1/playlist/audio/${id}")

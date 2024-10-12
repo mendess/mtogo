@@ -8,15 +8,19 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import xyz.mendess.mtogo.data.Settings
 import xyz.mendess.mtogo.data.StoredCredentialsState
-import xyz.mendess.mtogo.m.MPlayer
 import xyz.mendess.mtogo.m.currentSong
+import xyz.mendess.mtogo.m.daemon.MPlayer
+import xyz.mendess.mtogo.m.daemon.MediaItems
+import xyz.mendess.mtogo.m.daemon.ParcelableMediaItem
 import xyz.mendess.mtogo.m.nextSongs
 import xyz.mendess.mtogo.m.prevSongs
+import xyz.mendess.mtogo.util.orelse
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 
 class SparkConnection(
     settings: Settings,
     hostname: String,
+    private val mediaItems: MediaItems,
     private val player: MPlayer,
     private val scope: CoroutineScope,
 ) {
@@ -84,16 +88,13 @@ class SparkConnection(
 
             is Spark.MusicCmdKind.Queue -> {
                 val mediaItem = if (cmd.search) {
-                    player.mediaItems.fromSearch(cmd.query).fold(
-                        onSuccess = { it },
-                        onFailure = {
-                            return Spark.ErrorResponse.RequestFailed("search failed $it")
-                        }
-                    )
+                    mediaItems.parcelableFromSearch(cmd.query).orelse {
+                        return Spark.ErrorResponse.RequestFailed("failed search for ${cmd.query}: $it")
+                    }
                 } else {
                     val song = playlist.get().findByName(cmd.query)
                         ?: return Spark.ErrorResponse.RequestFailed("Song not in playlist")
-                    player.mediaItems.fromPlaylistSong(song)
+                    ParcelableMediaItem.PlaylistItem(song.id)
                 }
                 player.queueMediaItem(mediaItem)
             }

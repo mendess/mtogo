@@ -1,4 +1,4 @@
-package xyz.mendess.mtogo.util
+package xyz.mendess.mtogo.ui.util
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
