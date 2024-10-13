@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -82,9 +84,23 @@ private fun PlaylistTabsContent(
     var mode by remember { mutableStateOf(Mode.Songs) }
     val searchBuffer = remember { mutableStateOf("") }
     val icon = remember { mutableIntStateOf(R.drawable.baseline_shuffle_24) }
+    val showClearPlaylistConfirmDialog = remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     val onQueue = { searchBuffer.value = "" }
+
+    if (showClearPlaylistConfirmDialog.value) {
+        AlertDialog(
+            title = { Text(text = "Clear playlist?") },
+            text = { Text(text = "Are you sure you want to clear?") },
+            onDismissRequest = { showClearPlaylistConfirmDialog.value = false },
+            confirmButton = {
+                TextButton(onClick = {mplayer.clearMediaItems(); showClearPlaylistConfirmDialog.value = false}) {
+                    Text("Confirm")
+                }
+            },
+        )
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -115,16 +131,32 @@ private fun PlaylistTabsContent(
                     contentDescription = null,
                 )
             }
-            Button(
-                colors = ButtonDefaults.buttonColors()
-                    .copy(containerColor = MaterialTheme.colorScheme.secondary),
-                onClick = { mplayer.scope.launch { mplayer.resetLastQueue() } },
-                enabled = lastQueue.value != null,
-                modifier = modifier,
-            ) {
-                val relativeLastQueue =
-                    lastQueue.value?.let { "+${it - mplayer.currentMediaItemIndex.toUInt()}" }
-                Text(text = relativeLastQueue ?: "x")
+            when (val lastQueue = lastQueue.value) {
+                null -> {
+                    Button(
+                        colors = ButtonDefaults.buttonColors()
+                            .copy(containerColor = MaterialTheme.colorScheme.secondary),
+                        onClick = { showClearPlaylistConfirmDialog.value = true },
+                        modifier = modifier,
+                    ) {
+                        Text(text = "clear")
+                    }
+                }
+
+                else -> {
+                    Button(
+                        colors = ButtonDefaults.buttonColors()
+                            .copy(containerColor = MaterialTheme.colorScheme.secondary),
+                        onClick = {
+                            mplayer.scope.launch { mplayer.resetLastQueue() }
+                        },
+                        modifier = modifier,
+                    ) {
+                        val relativeLastQueue =
+                            "+${lastQueue - mplayer.currentMediaItemIndex.toUInt()}"
+                        Text(text = relativeLastQueue ?: "clear")
+                    }
+                }
             }
             Button(
                 colors = ButtonDefaults.buttonColors()

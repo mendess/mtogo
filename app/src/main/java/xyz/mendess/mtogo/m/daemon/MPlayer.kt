@@ -179,6 +179,7 @@ class MPlayer(
                     else it
                 }
                 with(viewModel.player) {
+                    if (mediaItemCount == 0) return@with
                     val nextItem = (currentMediaItemIndex + 1) % mediaItemCount
                     val mediaItem = viewModel
                         .mediaItems
