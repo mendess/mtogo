@@ -2,6 +2,7 @@
 
 package xyz.mendess.mtogo.spark
 
+import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
@@ -18,6 +19,7 @@ import xyz.mendess.mtogo.util.orelse
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 
 class SparkConnection(
+    context: Context,
     settings: Settings,
     hostname: String,
     private val mediaItems: MediaItems,
@@ -27,6 +29,8 @@ class SparkConnection(
     init {
         scope.launch { connectToBackend(settings, hostname) }
     }
+
+    private val playlist by lazy { PlaylistViewModel(context) }
 
     private suspend fun connectToBackend(settings: Settings, hostname: String) {
         var lastSocket: SocketIo? = null
@@ -61,7 +65,6 @@ class SparkConnection(
     }
 
     private suspend fun handleMusicCommand(cmd: Spark.MusicCmd): IntoSparkResponse {
-        val playlist by lazy { PlaylistViewModel() }
         return when (val cmd = cmd.command) {
             Spark.MusicCmdKind.Frwd -> {
                 player.seekToNextMediaItem()

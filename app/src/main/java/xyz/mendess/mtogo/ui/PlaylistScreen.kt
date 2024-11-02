@@ -154,7 +154,7 @@ private fun PlaylistTabsContent(
                     ) {
                         val relativeLastQueue =
                             "+${lastQueue - mplayer.currentMediaItemIndex.toUInt()}"
-                        Text(text = relativeLastQueue ?: "clear")
+                        Text(text = relativeLastQueue)
                     }
                 }
             }

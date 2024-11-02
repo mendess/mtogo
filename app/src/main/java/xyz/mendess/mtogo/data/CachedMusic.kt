@@ -12,15 +12,17 @@ import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import xyz.mendess.mtogo.util.orelse
+import xyz.mendess.mtogo.util.then
 import xyz.mendess.mtogo.util.withPermits
 import xyz.mendess.mtogo.viewmodels.Playlist
 import xyz.mendess.mtogo.viewmodels.VideoId
@@ -45,14 +47,17 @@ class CachedMusic(
 
     init {
         scope.launch {
-            settings.cacheMusicDir.filterNotNull().collect {
+            settings.cacheMusicDir.mapNotNull { it.uri }.collect {
                 concurrentDownloads.withPermits(4U) {
                     val tree = DocumentFile.fromTreeUri(context, it) ?: return@collect
                     for (f in tree.listFiles()) {
                         if (f.name?.contains(cachedDownloadingFileNameRegex) == true) {
                             val name = f.name
                             if (f.delete()) {
-                                Toast.makeText(context, "deleted $name", Toast.LENGTH_LONG).show()
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "deleted $name", Toast.LENGTH_LONG)
+                                        .show()
+                                }
                             }
                         }
                     }
@@ -63,7 +68,7 @@ class CachedMusic(
 
     data class Item(
         val audio: Uri,
-        val thumb: Uri,
+        val thumb: Uri?,
     )
 
     private val counter: AtomicInteger = AtomicInteger(0)
@@ -74,9 +79,9 @@ class CachedMusic(
     suspend fun fetchCachedSong(context: Context, song: Playlist.Song): Item? {
         return withContext(pool) {
             val (audio, thumb) = loadById(context, song.id)
-            if (audio == null || thumb == null) {
+            if (audio == null) {
                 concurrentDownloads.withPermit {
-                    storeByVideoId(context, song, audio, thumb)
+                    storeByVideoId(context, song, thumb)
                 }
             } else {
                 Item(audio, thumb)
@@ -89,11 +94,11 @@ class CachedMusic(
     }
 
     private fun loadById(context: Context, id: VideoId): Pair<Uri?, Uri?> {
-        val dir = settings.cacheMusicDir.value ?: return null to null
+        val (dir, useThumbNail) = settings.cacheMusicDir.value.intoParts() ?: return null to null
         var audio: Uri? = null
         var thumb: Uri? = null
         for (f in DocumentFile.fromTreeUri(context, dir)!!.listFiles()) {
-            if (audio != null && thumb != null) break
+            if (audio != null && if (useThumbNail) thumb != null else true) break
             if (f.isDirectory) continue
             val name = f.name ?: continue
             if (name.contains(id.get())) {
@@ -110,42 +115,44 @@ class CachedMusic(
     private suspend fun storeByVideoId(
         context: Context,
         song: Playlist.Song,
-        preCachedAudio: Uri?,
         preCachedThumb: Uri?
     ): Item? {
-        val musicDirUri = settings.cacheMusicDir.value ?: return null
+        val (musicDirUri, useThumb) = settings.cacheMusicDir.value.intoParts() ?: return null
         val root = DocumentFile.fromTreeUri(context, musicDirUri) ?: run {
             return null
         }
 
         val (thumbResponse, audioResponse) = coroutineScope {
-            val thumbResponse = async {
-                if (preCachedThumb == null) makeHttpRequest(song.id.toThumbnailUri())
-                else null
+            val thumbResponse = useThumb.then {
+                async {
+                    (preCachedThumb == null).then { makeHttpRequest(song.id.toThumbnailUri()) }
+                }
             }
-            val audioResponse = async {
-                if (preCachedAudio == null) makeHttpRequest(song.id.toAudioUri())
-                else null
-            }
+            val audioResponse = async { makeHttpRequest(song.id.toAudioUri()) }
             kotlin.runCatching {
-                val thumb = thumbResponse.await()?.getOrThrow()
-                val audio = audioResponse.await()?.getOrThrow()
+                val thumb = thumbResponse?.await()?.getOrThrow()
+                val audio = audioResponse.await().getOrThrow()
                 thumb to audio
             }
         }.orelse {
-            Toast.makeText(context, "failed to download ${song.title}: ${it.message}", Toast.LENGTH_LONG)
-                .show()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context,
+                    "failed to download ${song.title}: $it",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
             return null
         }
 
-        val audioUri = audioResponse?.contentType("audio/ogg")?.let { (mimeType, ext) ->
+        val audioUri = audioResponse.contentType("audio/ogg").let { (mimeType, ext) ->
             root.write(
                 context,
                 mimeType,
                 "${song.title}=${song.id.get()}=m.${ext}",
                 audioResponse.bodyAsChannel().toInputStream()
             )
-        } ?: preCachedAudio
+        }
         val thumbUri = thumbResponse?.contentType("image/webp")?.let { (mimeType, ext) ->
             root.write(
                 context,
@@ -154,9 +161,8 @@ class CachedMusic(
                 thumbResponse.bodyAsChannel().toInputStream()
             )
         } ?: preCachedThumb
-        return if (audioUri != null && thumbUri != null) {
-            Item(audioUri, thumbUri)
-        } else null
+
+        return if (audioUri != null) Item(audioUri, thumbUri) else null
     }
 
     private fun DocumentFile.write(
@@ -209,4 +215,12 @@ private suspend fun <T> retry(num: UInt, op: suspend () -> T): Result<T> {
         if (r.isSuccess || i == num) return r
     }
     throw NotImplementedError("unreachable")
+}
+
+private fun CacheModeSettings.intoParts(): Pair<Uri, Boolean>? {
+    return when (val mode = this) {
+        CacheModeSettings.Disabled -> null
+        is CacheModeSettings.MusicOnly -> mode.uri to false
+        is CacheModeSettings.Full -> mode.uri to true
+    }
 }

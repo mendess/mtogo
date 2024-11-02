@@ -42,7 +42,7 @@ import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 import xyz.mendess.mtogo.viewmodels.SettingsViewModel
 
 class MainActivity : ComponentActivity() {
-    private val playlistViewModel: PlaylistViewModel by viewModels()
+    private val playlistViewModel: PlaylistViewModel by viewModels { PlaylistViewModel.Factory }
     private val settingsViewModel: SettingsViewModel by viewModels { SettingsViewModel.Factory }
 
     private val mplayer: MutableStateFlow<MPlayerController?> = MutableStateFlow(

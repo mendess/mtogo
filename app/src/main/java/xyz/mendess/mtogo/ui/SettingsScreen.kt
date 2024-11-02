@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,16 +25,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -50,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mendess.mtogo.R
 import qrcode.QRCode
+import xyz.mendess.mtogo.data.CacheMode
 import xyz.mendess.mtogo.data.StoredCredentialsState
 import xyz.mendess.mtogo.spark.Credentials
 import xyz.mendess.mtogo.viewmodels.SettingsViewModel
@@ -60,18 +64,6 @@ import java.util.UUID
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel, darkTheme: Boolean, modifier: Modifier) {
     val currentCredentials by viewModel.credentials.collectAsStateWithLifecycle()
-    val cacheMusicDir by viewModel.settings.cacheMusicDir.collectAsStateWithLifecycle()
-    val cacheMusicDirSize by viewModel.cachedMusicDirectorySize.collectAsStateWithLifecycle(null)
-    val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) {
-        if (it != null) {
-            // take persistable Uri Permission for future use
-            val takeFlags =
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            context.contentResolver.takePersistableUriPermission(it, takeFlags)
-        }
-        viewModel.settings.setCacheMusicDir(it)
-    }
 
     Scaffold(
         bottomBar = {
@@ -107,28 +99,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, darkTheme: Boolean, modifier: M
                 }
             }
             item(key = "spacer1") { Divider(modifier) }
-            item(key = "storage-switch") {
-                Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("cache playlist files")
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    modifier = modifier.fillMaxWidth()
-                ) {
-                    Switch(checked = cacheMusicDir != null, onCheckedChange = {
-                        if (it) {
-                            launcher.launch(null)
-                        } else {
-                            viewModel.settings.setCacheMusicDir(null)
-                        }
-                    })
-                    Column {
-                        Text(cacheMusicDir?.path?.split(':')?.get(1) ?: "None")
-                        Text(cacheMusicDirSize.orZero().format())
-                    }
-                }
-            }
+            item(key = "storage-switch") { StorageSwitch(viewModel, modifier) }
         }
     }
 }
@@ -285,4 +256,68 @@ private fun Divider(modifier: Modifier = Modifier) {
             .padding(vertical = 10.dp)
             .fillMaxWidth(fraction = 0.8f)
     )
+}
+
+@Composable
+private fun StorageSwitch(viewModel: SettingsViewModel, modifier: Modifier = Modifier) {
+    val cacheMusicDir by viewModel.settings.cacheMusicDir.collectAsStateWithLifecycle()
+    val cacheMusicDirSize by viewModel.cachedMusicDirectorySize.collectAsStateWithLifecycle(null)
+    val context = LocalContext.current
+    val isDropDownExpanded = remember { mutableStateOf(false) }
+    val itemPosition = remember {
+        mutableIntStateOf(cacheMusicDir.mode.ordinal)
+    }
+
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) {
+        if (it != null) {
+            // take persistable Uri Permission for future use
+            val takeFlags =
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(it, takeFlags)
+            viewModel.settings.enableMusicCache(it, CacheMode.entries[itemPosition.intValue])
+        } else {
+            viewModel.settings.disableMusicCache()
+            itemPosition.intValue = CacheMode.Disabled.ordinal
+        }
+    }
+
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Text("cache playlist files")
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceAround,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Box(modifier = modifier) {
+            Row(modifier = modifier.clickable { isDropDownExpanded.value = true }) {
+                Text(CacheMode.entries[itemPosition.intValue].name)
+            }
+            DropdownMenu(
+                expanded = isDropDownExpanded.value,
+                onDismissRequest = { isDropDownExpanded.value = false },
+                modifier = modifier,
+            ) {
+                CacheMode.entries.forEachIndexed { index, mode ->
+                    Log.d("StorageScreen", "rendering: $mode")
+                    DropdownMenuItem(
+                        text = { Text(mode.name) },
+                        onClick = {
+                            itemPosition.intValue = index
+                            isDropDownExpanded.value = false
+                            when (CacheMode.entries[index]) {
+                                CacheMode.Full -> launcher.launch(null)
+                                CacheMode.MusicOnly -> launcher.launch(null)
+                                CacheMode.Disabled -> viewModel.settings.disableMusicCache()
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        Column {
+            Text(cacheMusicDir.uri?.path?.split(':')?.get(1) ?: "None")
+            Text(cacheMusicDirSize.orZero().format())
+        }
+    }
 }

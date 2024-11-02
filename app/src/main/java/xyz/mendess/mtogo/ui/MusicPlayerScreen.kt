@@ -161,7 +161,6 @@ fun MediaControlsContent(
             "previous",
             modifier,
             vtable.prev,
-            enabled = playState != PlayState.Buffering
         )
 
         when (playState) {
@@ -191,7 +190,6 @@ fun MediaControlsContent(
             "next",
             modifier,
             vtable.next,
-            enabled = playState != PlayState.Buffering
         )
     }
 }

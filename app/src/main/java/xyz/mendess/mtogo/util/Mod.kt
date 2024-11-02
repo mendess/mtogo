@@ -36,17 +36,19 @@ fun logThread(msg: String? = null) {
 
     Log.d(
         "dbg:$callerClass",
-        "$callerClass::$callerMethod is running in thread ${thread.name} ${msg?.let { " :: $it" }}"
+        "$callerClass::$callerMethod is running in thread ${thread.name}${msg?.let { " :: $it" }}"
     )
 }
 
-fun <T> T.dbg(): T {
+fun <T> T.dbg(msg: String? = null): T {
     val thread = Thread.currentThread()
     val stackTrace = thread.stackTrace
-    val callerClass = stackTrace[3].className.split(".").last()
-    val callerMethod = stackTrace[3].methodName
+    val caller =
+        stackTrace.asSequence().drop(3).find { !it.className.contains("ModKt") } ?: stackTrace[3]
+    val callerClass = caller.className.split(".").last()
+    val callerMethod = caller.methodName
 
-    Log.d("dbg:$callerClass", "[$callerClass::$callerMethod] $this")
+    Log.d("dbg:$callerClass", "[$callerClass::$callerMethod] $this${msg?.let { " :: $it" } ?: ""}")
     return this
 }
 
@@ -100,3 +102,5 @@ suspend inline fun <R> Semaphore.withPermits(n: UInt, f: () -> R): R {
         }
     }
 }
+
+inline fun <R> Boolean.then(f: () -> R): R? = if (this) f() else null

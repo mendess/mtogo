@@ -26,10 +26,31 @@ import java.util.UUID
 private val SAVED_STATE_DOMAIN = stringPreferencesKey("domain")
 private val SAVED_STATE_TOKEN = stringPreferencesKey("token")
 private val SAVED_STATE_MUSIC_CACHE_DIR = stringPreferencesKey("music-cache")
+private val SAVED_STATE_MUSIC_CACHE_DIR_MODE = stringPreferencesKey("music-cache-mode")
 
 sealed interface StoredCredentialsState {
     data object Loading : StoredCredentialsState
     data class Loaded(val credentials: Credentials?) : StoredCredentialsState
+}
+
+enum class CacheMode { Full, MusicOnly, Disabled }
+
+sealed interface CacheModeSettings {
+    data object Disabled : CacheModeSettings {
+        override val uri get() = null
+        override val mode get() = CacheMode.Disabled
+    }
+
+    data class Full(override val uri: Uri) : CacheModeSettings {
+        override val mode get() = CacheMode.Full
+    }
+
+    data class MusicOnly(override val uri: Uri) : CacheModeSettings {
+        override val mode get() = CacheMode.MusicOnly
+    }
+
+    val uri: Uri?
+    val mode: CacheMode
 }
 
 class Settings(context: Context, private val scope: CoroutineScope) {
@@ -65,10 +86,24 @@ class Settings(context: Context, private val scope: CoroutineScope) {
         }
     }
 
-    val cacheMusicDir: StateFlow<Uri?> = dataStore
+    val cacheMusicDir: StateFlow<CacheModeSettings> = dataStore
         .data
-        .map { preferences -> preferences[SAVED_STATE_MUSIC_CACHE_DIR]?.let(Uri::parse) }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = null)
+        .map { preferences ->
+            val url = preferences[SAVED_STATE_MUSIC_CACHE_DIR]
+                ?.let(Uri::parse)
+                ?: return@map CacheModeSettings.Disabled
+            when (preferences[SAVED_STATE_MUSIC_CACHE_DIR_MODE]?.let(CacheMode::valueOf)) {
+                null -> CacheModeSettings.Full(url)
+                CacheMode.Full -> CacheModeSettings.Full(url)
+                CacheMode.Disabled -> CacheModeSettings.Disabled
+                CacheMode.MusicOnly -> CacheModeSettings.MusicOnly(url)
+            }
+        }
+        .stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = CacheModeSettings.Disabled
+        )
 
     fun saveBackendConnection(domain: Uri, token: UUID) {
         scope.launch {
@@ -80,14 +115,28 @@ class Settings(context: Context, private val scope: CoroutineScope) {
         }
     }
 
-    fun setCacheMusicDir(uri: Uri?) {
+    fun disableMusicCache() {
+        setCacheMode(null)
+    }
+
+    fun enableMusicCache(uri: Uri, mode: CacheMode) {
+        assert(mode != CacheMode.Disabled)
+        setCacheMode(uri, full = mode == CacheMode.Full)
+    }
+
+    private fun setCacheMode(uri: Uri?, full: Boolean = true) {
         scope.launch {
-            Log.d("Settings", "storing cache folder to disk: $uri")
             dataStore.edit { preferences ->
+                Log.d("Settings", "storing cache folder to disk: $uri | full=$full")
                 if (uri == null) {
                     preferences.remove(SAVED_STATE_MUSIC_CACHE_DIR)
                 } else {
                     preferences[SAVED_STATE_MUSIC_CACHE_DIR] = uri.toString()
+                    preferences[SAVED_STATE_MUSIC_CACHE_DIR_MODE] = if (full) {
+                        CacheMode.Full.name
+                    } else {
+                        CacheMode.MusicOnly.name
+                    }
                 }
             }
         }

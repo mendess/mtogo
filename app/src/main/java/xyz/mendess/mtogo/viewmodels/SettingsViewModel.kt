@@ -1,5 +1,3 @@
-@file:Suppress("NAME_SHADOWING")
-
 package xyz.mendess.mtogo.viewmodels
 
 import android.app.Application
@@ -23,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -71,8 +70,8 @@ class SettingsViewModel private constructor(
 
     val cachedMusicDirectorySize: StateFlow<KiloBytes?> = settings
         .cacheMusicDir
+        .mapNotNull { it.uri }
         .combine(flow { emit(Unit); delay(1.minutes) }) { dir, _ ->
-            dir ?: return@combine null
             withContext(Dispatchers.IO) {
                 val readDir = DocumentFile.fromTreeUri(context, dir) ?: return@withContext null
                 KiloBytes(

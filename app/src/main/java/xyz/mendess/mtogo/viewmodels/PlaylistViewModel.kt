@@ -1,22 +1,36 @@
 package xyz.mendess.mtogo.viewmodels
 
+import android.app.Application
+import android.content.Context
 import android.net.Uri
 import android.os.Parcel
 import android.os.Parcelable
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
+import io.ktor.util.network.UnresolvedAddressException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
+import xyz.mendess.mtogo.util.dataStore
 
-const val PLAYLIST_URL =
+private const val PLAYLIST_URL =
     "https://raw.githubusercontent.com/mendess/spell-book/master/runes/m/playlist"
+
+private val SAVED_STATE_PLAYLIST = stringPreferencesKey("playlist-cache")
 
 sealed interface PlaylistLoadingState {
     data object Loading : PlaylistLoadingState
@@ -24,13 +38,10 @@ sealed interface PlaylistLoadingState {
     data class Error(val throwable: Throwable) : PlaylistLoadingState
 }
 
-suspend fun fetchPlaylist(http: HttpClient): Result<Playlist> {
-    return runCatching {
-        Playlist.fromStr(http.get(PLAYLIST_URL).bodyAsText())
-    }
-}
+class PlaylistViewModel(context: Context, default: List<Playlist.Song> = emptyList()) :
+    ViewModel() {
+    private val dataStore = context.dataStore
 
-class PlaylistViewModel(default: List<Playlist.Song> = emptyList()) : ViewModel() {
     private val _playlistFlow = MutableStateFlow(
         if (default.isEmpty()) {
             PlaylistLoadingState.Loading
@@ -57,6 +68,45 @@ class PlaylistViewModel(default: List<Playlist.Song> = emptyList()) : ViewModel(
 
     suspend fun get(): Playlist {
         return playlistFlow.filterIsInstance<PlaylistLoadingState.Success>().first().playlist
+    }
+
+    suspend fun tryGet(): Result<Playlist> {
+        return playlistFlow.mapNotNull {
+            when (it) {
+                PlaylistLoadingState.Loading -> null
+                is PlaylistLoadingState.Success -> Result.success(it.playlist)
+                is PlaylistLoadingState.Error -> Result.failure(it.throwable)
+            }
+        }.first()
+    }
+
+    private suspend fun fetchPlaylist(http: HttpClient): Result<Playlist> {
+        return runCatching {
+            Playlist.fromStr(
+                try {
+                    val playlistAsText = http.get(PLAYLIST_URL).bodyAsText()
+                    viewModelScope.launch {
+                        dataStore.edit { preferences -> preferences[SAVED_STATE_PLAYLIST] = playlistAsText }
+                    }
+                    playlistAsText
+                } catch (e: UnresolvedAddressException) {
+                    dataStore
+                        .data
+                        .map { preferences -> preferences[SAVED_STATE_PLAYLIST] }
+                        .first()
+                        ?: ""
+                }
+            )
+        }
+    }
+
+    companion object {
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val app = checkNotNull(this[APPLICATION_KEY] as Application)
+                PlaylistViewModel(app)
+            }
+        }
     }
 }
 

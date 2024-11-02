@@ -118,6 +118,7 @@ class MService : MediaSessionService() {
             })
             .build()
         spark = SparkConnection(
+            this,
             settings,
             hostname,
             mediaItems,

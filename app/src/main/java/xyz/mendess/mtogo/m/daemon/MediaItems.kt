@@ -25,8 +25,8 @@ import xyz.mendess.mtogo.data.Settings
 import xyz.mendess.mtogo.util.orelse
 import xyz.mendess.mtogo.util.parcelable
 import xyz.mendess.mtogo.viewmodels.Playlist
+import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 import xyz.mendess.mtogo.viewmodels.VideoId
-import xyz.mendess.mtogo.viewmodels.fetchPlaylist
 import java.io.Closeable
 import java.net.URLEncoder
 
@@ -48,7 +48,7 @@ class MediaItems(settings: Settings, scope: CoroutineScope, context: Context) : 
         install(HttpTimeout)
     }
     private val playlist = scope.async(start = CoroutineStart.LAZY) {
-        fetchPlaylist(http)
+        PlaylistViewModel(context).tryGet()
     }
     private val cachedMusic = CachedMusic(settings, http, scope, context)
 
@@ -149,7 +149,7 @@ class MediaItems(settings: Settings, scope: CoroutineScope, context: Context) : 
 
 fun CachedMusic.Item.toMediaItemOf(song: Playlist.Song): MediaItem = makeMediaItem(
     uri = audio,
-    thumbnailUri = thumb,
+    thumbnailUri = thumb ?: song.id.toThumbnailUri(),
     title = song.title,
     categories = song.categories,
 )
