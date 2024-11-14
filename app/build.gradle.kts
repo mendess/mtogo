@@ -15,6 +15,8 @@ val gradleProperties = Properties().apply {
 
 buildConfig {
     buildConfigField("BACKEND_TOKEN", File("./backend-key").readText())
+    buildConfigField("MUSIC_BACKEND", "https://mendess.xyz")
+//    buildConfigField("MUSIC_BACKEND", "http://192.168.1.36:8042")
 }
 
 android {

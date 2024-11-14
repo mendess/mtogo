@@ -15,9 +15,11 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
-import io.ktor.util.network.UnresolvedAddressException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterIsInstance
@@ -25,7 +27,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
+import m_to_go.app.BuildConfig
 import xyz.mendess.mtogo.util.dataStore
+import kotlin.time.Duration.Companion.seconds
 
 private const val PLAYLIST_URL =
     "https://raw.githubusercontent.com/mendess/spell-book/master/runes/m/playlist"
@@ -56,12 +60,17 @@ class PlaylistViewModel(context: Context, default: List<Playlist.Song> = emptyLi
     init {
         if (playlistFlow.value is PlaylistLoadingState.Loading) {
             viewModelScope.launch {
-                _playlistFlow.value = HttpClient(CIO)
-                    .use { fetchPlaylist(it) }
-                    .fold(
-                        onSuccess = PlaylistLoadingState::Success,
-                        onFailure = PlaylistLoadingState::Error,
-                    )
+                HttpClient(CIO) { install(HttpTimeout) }.use { http ->
+                    while (_playlistFlow.value !is PlaylistLoadingState.Success) {
+                        _playlistFlow.value = fetchPlaylist(http)
+                            .fold(
+                                onSuccess = PlaylistLoadingState::Success,
+                                onFailure = PlaylistLoadingState::Error,
+                            )
+
+                        delay(1.seconds)
+                    }
+                }
             }
         }
     }
@@ -84,17 +93,25 @@ class PlaylistViewModel(context: Context, default: List<Playlist.Song> = emptyLi
         return runCatching {
             Playlist.fromStr(
                 try {
-                    val playlistAsText = http.get(PLAYLIST_URL).bodyAsText()
+                    val playlistAsText = http.get(PLAYLIST_URL) {
+                        timeout {
+                            this.connectTimeoutMillis = 10_000L
+                            this.requestTimeoutMillis = 12_000L
+                            this.socketTimeoutMillis = 11_000L
+                        }
+                    }.bodyAsText()
                     viewModelScope.launch {
-                        dataStore.edit { preferences -> preferences[SAVED_STATE_PLAYLIST] = playlistAsText }
+                        dataStore.edit { preferences ->
+                            preferences[SAVED_STATE_PLAYLIST] = playlistAsText
+                        }
                     }
                     playlistAsText
-                } catch (e: UnresolvedAddressException) {
+                } catch (e: Exception) {
                     dataStore
                         .data
                         .map { preferences -> preferences[SAVED_STATE_PLAYLIST] }
                         .first()
-                        ?: ""
+                        ?: throw e
                 }
             )
         }
@@ -156,13 +173,13 @@ value class VideoId(private val id: String) : Parcelable {
     fun get(): String = id
 
     fun toAudioUri(): Uri =
-        Uri.parse("https://mendess.xyz/api/v1/playlist/audio/${id}")
+        Uri.parse("${BuildConfig.MUSIC_BACKEND}/api/v1/playlist/audio/${id}")
 
     fun toThumbnailUri(): Uri =
-        Uri.parse("https://mendess.xyz/api/v1/playlist/thumb/${id}")
+        Uri.parse("${BuildConfig.MUSIC_BACKEND}/api/v1/playlist/thumb/${id}")
 
     fun toMetadataUri(): Uri =
-        Uri.parse("https://mendess.xyz/api/v1/playlist/metadata/${id}")
+        Uri.parse("${BuildConfig.MUSIC_BACKEND}/api/v1/playlist/metadata/${id}")
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeString(id)
