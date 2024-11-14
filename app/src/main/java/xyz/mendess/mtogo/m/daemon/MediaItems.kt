@@ -10,6 +10,7 @@ import androidx.media3.common.MediaMetadata
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +20,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import m_to_go.app.BuildConfig
 import okhttp3.internal.closeQuietly
 import xyz.mendess.mtogo.data.CachedMusic
 import xyz.mendess.mtogo.data.Settings
@@ -73,7 +75,9 @@ class MediaItems(settings: Settings, scope: CoroutineScope, context: Context) : 
         } else {
             val query = withContext(Dispatchers.IO) { URLEncoder.encode(query, "utf-8") }
             runCatching {
-                val resp = http.get("https://mendess.xyz/api/v1/playlist/search/${query}")
+                val resp = http.get("https://mendess.xyz/api/v1/playlist/search/${query}") {
+                    bearerAuth(BuildConfig.BACKEND_TOKEN)
+                }
                 val id = resp.bodyAsText()
                 ParcelableMediaItem.PlaylistItem(VideoId(id))
             }
@@ -90,7 +94,9 @@ class MediaItems(settings: Settings, scope: CoroutineScope, context: Context) : 
                     @Serializable
                     data class Metadata(val title: String)
 
-                    val response = http.get(titleUri.toString())
+                    val response = http.get(titleUri.toString()) {
+                        bearerAuth(BuildConfig.BACKEND_TOKEN)
+                    }
                     JSON.decodeFromString<Metadata>(response.bodyAsText()).title
                 } catch (e: Exception) {
                     "error getting title: ${e.message}"

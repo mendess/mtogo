@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     kotlin("plugin.serialization") version "2.0.20"
+    id("com.github.gmazzo.buildconfig") version "5.5.0"
 }
 
 
@@ -12,6 +13,9 @@ val gradleProperties = Properties().apply {
     load(FileInputStream(rootProject.file("local.properties")))
 }
 
+buildConfig {
+    buildConfigField("BACKEND_TOKEN", File("./backend-key").readText())
+}
 
 android {
     namespace = "com.mendess.mtogo"

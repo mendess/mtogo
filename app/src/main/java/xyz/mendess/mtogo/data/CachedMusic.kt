@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.timeout
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import m_to_go.app.BuildConfig
 import xyz.mendess.mtogo.util.orelse
 import xyz.mendess.mtogo.util.then
 import xyz.mendess.mtogo.util.withPermits
@@ -184,6 +186,7 @@ class CachedMusic(
     private suspend fun makeHttpRequest(uri: Uri): Result<HttpResponse> {
         return retry(5U) {
             http.get(uri.toString()) {
+                bearerAuth(BuildConfig.BACKEND_TOKEN)
                 timeout {
                     this.connectTimeoutMillis = 1_000L
                     this.requestTimeoutMillis = 20_000L
