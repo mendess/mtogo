@@ -5,7 +5,10 @@ import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ConnectionResult
@@ -19,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.guava.future
+import m_to_go.app.BuildConfig
 import xyz.mendess.mtogo.data.Settings
 import xyz.mendess.mtogo.spark.SparkConnection
 import xyz.mendess.mtogo.util.hostname
@@ -85,7 +89,15 @@ class MService : MediaSessionService() {
         super.onCreate()
         val settings = Settings(this, scope)
         val mediaItems = MediaItems(settings, scope, this)
+
         val player = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(this).setDataSourceFactory(
+                    DefaultDataSource.Factory(this, DefaultHttpDataSource.Factory().apply {
+                        setDefaultRequestProperties(mapOf("Authorization" to "Bearer ${BuildConfig.BACKEND_TOKEN}"))
+                    })
+                )
+            )
             .setDeviceVolumeControlEnabled(true)
             .setHandleAudioBecomingNoisy(true)
             .build()

@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -45,7 +46,9 @@ import androidx.compose.ui.unit.em
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.mendess.mtogo.R
+import m_to_go.app.BuildConfig
 import xyz.mendess.mtogo.m.CurrentSong
 import xyz.mendess.mtogo.m.MPlayerController
 import xyz.mendess.mtogo.m.daemon.PlayState
@@ -130,8 +133,12 @@ private fun CurrentSongContent(
                 }
 
                 else -> {
+                    val imgRequest: ImageRequest = ImageRequest.Builder(LocalContext.current)
+                        .data(thumb.toString())
+                        .addHeader("Authorization", "Bearer ${BuildConfig.BACKEND_TOKEN}")
+                        .build()
                     AsyncImage(
-                        model = thumb.toString(),
+                        model = imgRequest,
                         contentScale = ContentScale.Crop,
                         contentDescription = "Album/Video art",
                         modifier = modifier.fillMaxSize(),
