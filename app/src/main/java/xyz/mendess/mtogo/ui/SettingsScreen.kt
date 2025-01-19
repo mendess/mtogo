@@ -42,8 +42,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -213,6 +215,8 @@ private fun MusicSessionQRScreen(
             Log.d("SettingsScreen", "failed to create music session: $it")
         }
     }
+    val clipboardManager = LocalClipboardManager.current
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.fillMaxWidth()
@@ -241,7 +245,9 @@ private fun MusicSessionQRScreen(
                 Image(
                     bitmap = (helloWorld.render().nativeImage() as Bitmap).asImageBitmap(),
                     contentDescription = state.uri.toString(),
-                    modifier = Modifier.padding(20.dp)
+                    modifier = modifier
+                        .clickable { clipboardManager.setText(AnnotatedString(helloWorld.data)) }
+                        .padding(20.dp)
                 )
             }
         }
