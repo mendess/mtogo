@@ -200,7 +200,7 @@ private fun PlaylistContent(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val songs = list.songs.filter { it.title.contains(filter) }
+    val songs = list.songs.filter { it.name.contains(filter) }
     Column(modifier = modifier) {
         Spacer(modifier = modifier.padding(10.dp))
         LazyColumn(modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.Center) {
@@ -209,7 +209,7 @@ private fun PlaylistContent(
             } else {
                 items(songs, key = { it.id }) { song ->
                     QueueButton(
-                        text = song.title,
+                        text = song.name,
                         modifier = modifier
                     ) {
                         val t = context.toastQueueing()

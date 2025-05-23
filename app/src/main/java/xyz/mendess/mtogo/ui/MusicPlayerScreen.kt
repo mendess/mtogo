@@ -197,13 +197,13 @@ fun MediaControlsContent(
 @Composable
 fun CategoriesScreen(mplayer: MPlayerController, modifier: Modifier = Modifier) {
     val currentSong by mplayer.currentSong.collectAsStateWithLifecycle()
-    CategoriesContent(currentSong?.categories ?: emptyList(), modifier = modifier)
+    CategoriesContent(currentSong?.allCategories() ?: emptySequence(), modifier = modifier)
 }
 
 @Composable
-fun CategoriesContent(categories: List<String>, modifier: Modifier = Modifier) {
+fun CategoriesContent(categories: Sequence<String>, modifier: Modifier = Modifier) {
     LazyRow(modifier = modifier) {
-        items(categories, key = ::identity) { cat ->
+        items(categories.toList(), key = ::identity) { cat ->
             Text(
                 text = cat,
                 fontStyle = FontStyle.Italic,
@@ -313,7 +313,16 @@ fun NextUpContent(list: List<String>, modifier: Modifier = Modifier) {
 @Composable
 fun PreviewPlayerScreen() {
     val currentSong =
-        CurrentSong(title = "No Music", thumbNailUri = null, categories = ArrayList())
+        CurrentSong(
+            title = "No Music",
+            thumbNailUri = null,
+            categories = ArrayList(),
+            artist = "artist",
+            genre = "music genre",
+            language = "human",
+            likedBy = listOf("friend"),
+            recommendedBy = "other friend",
+        )
     val playState = PlayState.Playing
 
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -321,7 +330,7 @@ fun PreviewPlayerScreen() {
         Spacer(modifier = Modifier.height(10.dp))
         MediaControlsContent(playState, vtable = MediaButtonsVtable())
         ProgressBarContent(position = 30, duration = 500)
-        CategoriesContent(currentSong.categories)
+        CategoriesContent(currentSong.allCategories())
         NextUpContent(
             listOf("first", "second", "third"),
         )

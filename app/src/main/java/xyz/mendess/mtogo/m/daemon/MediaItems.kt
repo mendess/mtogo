@@ -42,6 +42,9 @@ private val JSON = Json { ignoreUnknownKeys = true }
 class MediaItems(settings: Settings, scope: CoroutineScope, context: Context) : Closeable {
     companion object {
         const val MUSIC_METADATA_CATEGORIES = "cat"
+        const val MUSIC_METADATA_LANGUAGE = "language"
+        const val MUSIC_METADATA_LIKED_BY = "liked-by"
+        const val MUSIC_METADATA_RECOMMENDED_BY = "recommended-by"
         const val MUSIC_METADATA_THUMBNAIL_ID = "thumb"
         const val MUSIC_METADATA_SHOULD_CACHE_WITH = "cache-with"
     }
@@ -136,9 +139,14 @@ class MediaItems(settings: Settings, scope: CoroutineScope, context: Context) : 
         } ?: makeMediaItem(
             uri = song.id.toAudioUri(),
             thumbnailUri = song.id.toThumbnailUri(),
-            title = song.title,
+            title = song.name,
             categories = song.categories,
             shouldCacheWith = song.id,
+            artist = song.artist,
+            genre = song.genre,
+            language = song.language,
+            likedBy = song.likedBy,
+            recommendedBy = song.recommendedBy
         )
     }
 
@@ -156,21 +164,37 @@ class MediaItems(settings: Settings, scope: CoroutineScope, context: Context) : 
 fun CachedMusic.Item.toMediaItemOf(song: Playlist.Song): MediaItem = makeMediaItem(
     uri = audio,
     thumbnailUri = thumb ?: song.id.toThumbnailUri(),
-    title = song.title,
-    categories = song.categories,
+    title = song.name,
+    categories = song.categories.toList(),
+    artist = song.artist,
+    genre = song.genre,
+    language = song.language,
+    likedBy = song.likedBy,
+    recommendedBy = song.recommendedBy
 )
 
-fun makeMediaItem(
+private fun makeMediaItem(
     uri: Uri,
     title: String? = null,
     thumbnailUri: Uri? = null,
     shouldCacheWith: VideoId? = null,
     categories: List<String> = emptyList(),
+    artist: String? = null,
+    genre: String? = null,
+    language: String? = null,
+    likedBy: List<String> = emptyList(),
+    recommendedBy: String? = null,
 ): MediaItem {
     return MediaItem.Builder().run {
         setMediaMetadata(MediaMetadata.Builder().run {
             if (title != null) setTitle(title)
             setUri(uri)
+            if (artist != null) {
+                setArtist(artist)
+                setAlbumArtist(artist)
+            }
+            if (genre != null) setGenre(genre)
+            if (thumbnailUri != null) setArtworkUri(thumbnailUri)
             setExtras(Bundle().apply {
                 if (shouldCacheWith != null) putParcelable(
                     MediaItems.MUSIC_METADATA_SHOULD_CACHE_WITH,
@@ -179,6 +203,15 @@ fun makeMediaItem(
                 if (categories.isNotEmpty()) putStringArrayList(
                     MediaItems.MUSIC_METADATA_CATEGORIES,
                     ArrayList(categories)
+                )
+                if (language != null) putString(MediaItems.MUSIC_METADATA_LANGUAGE, language)
+                if (likedBy.isNotEmpty()) putStringArrayList(
+                    MediaItems.MUSIC_METADATA_LIKED_BY,
+                    ArrayList(likedBy)
+                )
+                if (recommendedBy != null) putString(
+                    MediaItems.MUSIC_METADATA_RECOMMENDED_BY,
+                    recommendedBy
                 )
                 if (thumbnailUri != null) putString(
                     MediaItems.MUSIC_METADATA_THUMBNAIL_ID,

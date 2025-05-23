@@ -140,7 +140,7 @@ class CachedMusic(
             withContext(Dispatchers.Main) {
                 Toast.makeText(
                     context,
-                    "failed to download ${song.title}: $it",
+                    "failed to download ${song.name}: $it",
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -151,7 +151,7 @@ class CachedMusic(
             root.write(
                 context,
                 mimeType,
-                "${song.title}=${song.id.get()}=m.${ext}",
+                "${song.name}=${song.id.get()}=m.${ext}",
                 audioResponse.bodyAsChannel().toInputStream()
             )
         }
@@ -159,7 +159,7 @@ class CachedMusic(
             root.write(
                 context,
                 mimeType,
-                "${song.title}=${song.id.get()}=mart.${ext}",
+                "${song.name}=${song.id.get()}=mart.${ext}",
                 thumbResponse.bodyAsChannel().toInputStream()
             )
         } ?: preCachedThumb

@@ -9,8 +9,23 @@ import xyz.mendess.mtogo.m.daemon.MediaItems
 data class CurrentSong(
     val title: String,
     val categories: ArrayList<String>,
+    val artist: CharSequence?,
+    val genre: CharSequence?,
+    val language: String?,
+    val likedBy: List<String>,
+    val recommendedBy: String?,
     val thumbNailUri: Uri?,
-)
+) {
+    fun allCategories(): Sequence<String> {
+        return categories.asSequence()
+            .plusElement(artist?.toString())
+            .plusElement(genre?.toString())
+            .plusElement(language)
+            .plus(likedBy)
+            .plusElement(recommendedBy)
+            .filterNotNull()
+    }
+}
 
 val Player.totalDurationMs: Long?
     get() = when (val duration = this.duration) {
@@ -43,7 +58,7 @@ fun Player.prevSongs(count: UInt): List<String> {
 }
 
 fun Player.currentSong(): CurrentSong? {
-    return if(mediaItemCount == 0) null
+    return if (mediaItemCount == 0) null
     else mediaMetadata.toCurrentSong()
 }
 
@@ -53,6 +68,11 @@ fun MediaMetadata.toCurrentSong(): CurrentSong {
         categories = extras
             ?.getStringArrayList(MediaItems.MUSIC_METADATA_CATEGORIES)
             ?: ArrayList(),
+        artist = artist,
+        genre = genre,
+        language = extras?.getString(MediaItems.MUSIC_METADATA_LANGUAGE),
+        likedBy = extras?.getStringArrayList(MediaItems.MUSIC_METADATA_LIKED_BY) ?: ArrayList(),
+        recommendedBy = extras?.getString(MediaItems.MUSIC_METADATA_RECOMMENDED_BY),
         thumbNailUri = extras
             ?.getString(MediaItems.MUSIC_METADATA_THUMBNAIL_ID)
             ?.let(Uri::parse)
