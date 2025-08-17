@@ -2,6 +2,7 @@ package xyz.mendess.mtogo.m.daemon
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -25,9 +26,11 @@ import kotlinx.coroutines.guava.future
 import m_to_go.app.BuildConfig
 import xyz.mendess.mtogo.data.Settings
 import xyz.mendess.mtogo.spark.SparkConnection
+import xyz.mendess.mtogo.util.fullMessage
 import xyz.mendess.mtogo.util.hostname
 import xyz.mendess.mtogo.util.parcelable
 import xyz.mendess.mtogo.util.parcelableList
+import xyz.mendess.mtogo.util.stackTraceToList
 import kotlin.properties.ReadOnlyProperty
 
 typealias Action = suspend (MPlayer, Bundle) -> SessionResult
@@ -88,7 +91,16 @@ class MService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         val settings = Settings(this, scope)
-        val mediaItems = MediaItems(settings, scope, this)
+        val mediaItems = MediaItems(settings, scope, this) { error ->
+            Log.e("MService", error.toString())
+            mediaSession?.sendError(
+                SessionError(
+                    SessionError.ERROR_IO,
+                    error.fullMessage(),
+                    Bundle().also { it.putStringArrayList("stacktrace", error.stackTraceToList()) }
+                )
+            )
+        }
 
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(

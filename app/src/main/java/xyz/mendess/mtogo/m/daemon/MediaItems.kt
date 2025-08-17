@@ -39,7 +39,12 @@ private const val YT_WATCH_PATH = "watch"
 
 private val JSON = Json { ignoreUnknownKeys = true }
 
-class MediaItems(settings: Settings, scope: CoroutineScope, context: Context) : Closeable {
+class MediaItems(
+    settings: Settings,
+    scope: CoroutineScope,
+    context: Context,
+    val sendError: (Throwable) -> Unit
+) : Closeable {
     companion object {
         const val MUSIC_METADATA_CATEGORIES = "cat"
         const val MUSIC_METADATA_LANGUAGE = "language"
@@ -133,7 +138,10 @@ class MediaItems(settings: Settings, scope: CoroutineScope, context: Context) : 
         caching: Boolean
     ): MediaItem {
         return if (caching) {
-            cachedMusic.fetchCachedSong(context, song)?.toMediaItemOf(song)
+            cachedMusic
+                .fetchCachedSong(context, song)
+                .getOrElse { sendError(it); null }
+                ?.toMediaItemOf(song)
         } else {
             null
         } ?: makeMediaItem(
@@ -157,7 +165,10 @@ class MediaItems(settings: Settings, scope: CoroutineScope, context: Context) : 
             ?.parcelable<VideoId>(MUSIC_METADATA_SHOULD_CACHE_WITH)
             ?: return null
         val song = playlist.await().orelse { return null }.findById(id) ?: return null
-        return cachedMusic.fetchCachedSong(context, song)?.toMediaItemOf(song)
+        return cachedMusic
+            .fetchCachedSong(context, song)
+            .getOrElse { sendError(it); return null }
+            ?.toMediaItemOf(song)
     }
 }
 

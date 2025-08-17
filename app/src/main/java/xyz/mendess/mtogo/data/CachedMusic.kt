@@ -2,6 +2,7 @@ package xyz.mendess.mtogo.data
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
 import io.ktor.client.HttpClient
@@ -23,6 +24,8 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import m_to_go.app.BuildConfig
+import xyz.mendess.mtogo.util.Err
+import xyz.mendess.mtogo.util.Ok
 import xyz.mendess.mtogo.util.orelse
 import xyz.mendess.mtogo.util.then
 import xyz.mendess.mtogo.util.withPermits
@@ -78,7 +81,7 @@ class CachedMusic(
         Thread(it, "cached-music-thread ${counter.incrementAndGet()}")
     }.asCoroutineDispatcher()
 
-    suspend fun fetchCachedSong(context: Context, song: Playlist.Song): Item? {
+    suspend fun fetchCachedSong(context: Context, song: Playlist.Song): Result<Item?> {
         return withContext(pool) {
             val (audio, thumb) = loadById(context, song.id)
             if (audio == null) {
@@ -86,7 +89,7 @@ class CachedMusic(
                     storeByVideoId(context, song, thumb)
                 }
             } else {
-                Item(audio, thumb)
+                Ok(Item(audio, thumb))
             }
         }
     }
@@ -118,10 +121,16 @@ class CachedMusic(
         context: Context,
         song: Playlist.Song,
         preCachedThumb: Uri?
-    ): Item? {
-        val (musicDirUri, useThumb) = settings.cacheMusicDir.value.intoParts() ?: return null
+    ): Result<Item?> {
+        Log.i("CachedMusic", "storeByVideoId ${song.name}")
+        val (musicDirUri, useThumb) = settings.cacheMusicDir.value.intoParts()
+            ?: return Ok(null).also {
+                Log.i("CachedMusic", "returning 1")
+            }
         val root = DocumentFile.fromTreeUri(context, musicDirUri) ?: run {
-            return null
+            return Ok(null).also {
+                Log.i("CachedMusic", "returning 2")
+            }
         }
 
         val (thumbResponse, audioResponse) = coroutineScope {
@@ -144,7 +153,8 @@ class CachedMusic(
                     Toast.LENGTH_LONG
                 ).show()
             }
-            return null
+            Log.i("CachedMusic", "returning 3 ${it.message}")
+            return Err(it)
         }
 
         val audioUri = audioResponse.contentType("audio/ogg").let { (mimeType, ext) ->
@@ -164,7 +174,9 @@ class CachedMusic(
             )
         } ?: preCachedThumb
 
-        return if (audioUri != null) Item(audioUri, thumbUri) else null
+        return Ok(if (audioUri != null) Item(audioUri, thumbUri) else null).also {
+            Log.i("CachedMusic", "returning 4 $it")
+        }
     }
 
     private fun DocumentFile.write(

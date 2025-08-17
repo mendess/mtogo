@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -52,19 +54,26 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mendess.mtogo.R
 import qrcode.QRCode
 import xyz.mendess.mtogo.data.CacheMode
 import xyz.mendess.mtogo.data.StoredCredentialsState
 import xyz.mendess.mtogo.spark.Credentials
+import xyz.mendess.mtogo.viewmodels.ErrorsViewModel
 import xyz.mendess.mtogo.viewmodels.SettingsViewModel
 import xyz.mendess.mtogo.viewmodels.orZero
 import java.util.UUID
 
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, darkTheme: Boolean, modifier: Modifier) {
+fun SettingsScreen(
+    errors: ErrorsViewModel,
+    viewModel: SettingsViewModel,
+    darkTheme: Boolean,
+    modifier: Modifier
+) {
     val currentCredentials by viewModel.credentials.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -102,6 +111,8 @@ fun SettingsScreen(viewModel: SettingsViewModel, darkTheme: Boolean, modifier: M
             }
             item(key = "spacer1") { Divider(modifier) }
             item(key = "storage-switch") { StorageSwitch(viewModel, modifier) }
+            item(key = "spacer2") { Divider(modifier) }
+            item(key = "errors") { ErrorScreen(errors, modifier.consumeWindowInsets(innerPadding)) }
         }
     }
 }
@@ -324,6 +335,45 @@ private fun StorageSwitch(viewModel: SettingsViewModel, modifier: Modifier = Mod
         Column {
             Text(cacheMusicDir.uri?.path?.split(':')?.get(1) ?: "None")
             Text(cacheMusicDirSize.orZero().format())
+        }
+    }
+}
+
+@Composable
+fun ErrorScreen(errors: ErrorsViewModel, modifier: Modifier) {
+    val errors by errors.errorLog.collectAsStateWithLifecycle()
+    val shownError = remember { mutableStateOf<Int?>(null) }
+    val clipboard = LocalClipboardManager.current
+
+    for (error in errors) {
+        Column(
+            modifier = modifier,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(error.message, modifier.clickable {
+                if (shownError.value == error.id) {
+                    shownError.value = null
+                } else {
+                    shownError.value = error.id
+                }
+            })
+            if (error.id == shownError.value) {
+                val stacktrace = error.stacktrace.joinToString("\n")
+                Text(
+                    text = stacktrace,
+                    lineHeight = 12.sp,
+                    fontSize = 12.sp,
+                    modifier = modifier.pointerInput(Unit) {
+                        detectTapGestures(
+                            onLongPress = {
+                                clipboard.setText(
+                                    AnnotatedString("${error.message}\n\n${stacktrace}")
+                                )
+                            }
+                        )
+                    }
+                )
+            }
         }
     }
 }

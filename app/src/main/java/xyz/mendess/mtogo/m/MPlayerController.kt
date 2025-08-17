@@ -21,17 +21,24 @@ import xyz.mendess.mtogo.m.daemon.MediaItems
 import xyz.mendess.mtogo.m.daemon.ParcelableMediaItem
 import xyz.mendess.mtogo.m.daemon.PlayState
 import xyz.mendess.mtogo.util.await
+import xyz.mendess.mtogo.util.stackTraceToList
+import xyz.mendess.mtogo.viewmodels.ErrorsViewModel
 import xyz.mendess.mtogo.viewmodels.Playlist
 import kotlin.time.Duration.Companion.seconds
 
 class MPlayerController(
+    private val errorsViewModel: ErrorsViewModel,
     private val player: MediaController,
     settings: Settings,
     context: Context,
     val scope: CoroutineScope,
 ) : Player by player {
 
-    val mediaItems = MediaItems(settings, scope, context)
+    val mediaItems = MediaItems(settings, scope, context) {
+        errorsViewModel.push(
+            it.message ?: it.javaClass.simpleName, it.stackTraceToList()
+        )
+    }
 
     private val _currentSong: MutableStateFlow<CurrentSong?> = MutableStateFlow(null)
     val currentSong = _currentSong.asStateFlow()
@@ -83,9 +90,18 @@ class MPlayerController(
         }).await()
     }
 
-    fun queuePlaylistItem(song: Playlist.Song, move: Boolean = true, callback: suspend () -> Unit = {}) {
+    fun queuePlaylistItem(
+        song: Playlist.Song,
+        move: Boolean = true,
+        callback: suspend () -> Unit = {}
+    ) {
         scope.launch {
-            queueMediaItem(ParcelableMediaItem.PlaylistItem(song.id), move, notBatching = true, callback)
+            queueMediaItem(
+                ParcelableMediaItem.PlaylistItem(song.id),
+                move,
+                notBatching = true,
+                callback
+            )
         }
     }
 

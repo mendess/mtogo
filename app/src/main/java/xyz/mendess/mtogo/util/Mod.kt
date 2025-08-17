@@ -68,9 +68,6 @@ fun <T, R> Flow<T>.mapConcurrent(scope: CoroutineScope, size: UInt, f: suspend (
         }
     }
 }
-
-inline fun <T> Result<T>.orelse(f: (Throwable) -> Nothing): T = fold(::identity) { f(it) }
-
 inline fun <reified T : Parcelable> Bundle.parcelable(key: String): T? =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         getParcelable(key, T::class.java)

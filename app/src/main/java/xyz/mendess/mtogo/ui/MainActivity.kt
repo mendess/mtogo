@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.annotation.OptIn
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
@@ -38,12 +42,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import xyz.mendess.mtogo.m.MPlayerController
 import xyz.mendess.mtogo.m.daemon.MService
 import xyz.mendess.mtogo.ui.theme.MToGoTheme
+import xyz.mendess.mtogo.util.fullMessage
+import xyz.mendess.mtogo.util.stackTraceToList
+import xyz.mendess.mtogo.viewmodels.ErrorsViewModel
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 import xyz.mendess.mtogo.viewmodels.SettingsViewModel
 
 class MainActivity : ComponentActivity() {
     private val playlistViewModel: PlaylistViewModel by viewModels { PlaylistViewModel.Factory }
     private val settingsViewModel: SettingsViewModel by viewModels { SettingsViewModel.Factory }
+    private val errorsViewModel: ErrorsViewModel by viewModels()
 
     private val mplayer: MutableStateFlow<MPlayerController?> = MutableStateFlow(
         null
@@ -57,7 +65,7 @@ class MainActivity : ComponentActivity() {
             val mplayer by this@MainActivity.mplayer.collectAsStateWithLifecycle()
             when (val mplayer = mplayer) {
                 null -> {}
-                else -> Screen(playlistViewModel, mplayer, settingsViewModel)
+                else -> Screen(playlistViewModel, mplayer, settingsViewModel, errorsViewModel)
             }
         }
     }
@@ -67,8 +75,20 @@ class MainActivity : ComponentActivity() {
         val sessionToken = SessionToken(this, ComponentName(this, MService::class.java))
         controllerFuture = MediaController.Builder(this, sessionToken).buildAsync().apply {
             addListener({
+                val session = get()
+                session.addListener(object : Player.Listener {
+                    @OptIn(UnstableApi::class)
+                    override fun onPlayerError(error: PlaybackException) {
+                        errorsViewModel.push(
+                            error.fullMessage(),
+                            error.extras.getStringArrayList("stacktrace")
+                                ?: error.stackTraceToList()
+                        )
+                    }
+                })
                 mplayer.value = MPlayerController(
-                    get(),
+                    errorsViewModel,
+                    session,
                     settingsViewModel.settings,
                     this@MainActivity,
                     this@MainActivity.lifecycleScope
@@ -88,6 +108,7 @@ fun Screen(
     playlistViewModel: PlaylistViewModel,
     mplayer: MPlayerController,
     settingsViewModel: SettingsViewModel,
+    errorsViewModel: ErrorsViewModel,
     modifier: Modifier = Modifier,
     darkTheme: Boolean = isSystemInDarkTheme()
 ) {
@@ -104,6 +125,7 @@ fun Screen(
                     playlistViewModel,
                     mplayer,
                     settingsViewModel,
+                    errorsViewModel,
                     darkTheme,
                     Modifier.padding(innerPadding)
                 )
@@ -117,6 +139,7 @@ fun TabScreen(
     playlistViewModel: PlaylistViewModel,
     mplayer: MPlayerController,
     settingsViewModel: SettingsViewModel,
+    errorsViewModel: ErrorsViewModel,
     darkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -126,7 +149,8 @@ fun TabScreen(
     Column(modifier = modifier.fillMaxWidth()) {
         TabRow(selectedTabIndex = tabIndex, modifier = modifier) {
             tabs.forEachIndexed { index, title ->
-                Tab(text = { Text(title) },
+                Tab(
+                    text = { Text(title) },
                     selected = tabIndex == index,
                     onClick = { tabIndex = index }
                 )
@@ -135,7 +159,7 @@ fun TabScreen(
         when (tabIndex) {
             0 -> PlayerScreen(mplayer, darkTheme, modifier)
             1 -> PlaylistScreen(playlistViewModel, mplayer, modifier)
-            2 -> SettingsScreen(settingsViewModel, darkTheme, modifier)
+            2 -> SettingsScreen(errorsViewModel, settingsViewModel, darkTheme, modifier)
         }
     }
 }
