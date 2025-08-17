@@ -21,3 +21,6 @@ cp -v ./app/build/outputs/apk/release/app-release.apk /tmp/mtogo.apk
 share /tmp/mtogo.apk
 
 rm -v /tmp/mtogo.apk
+
+git add ./app/build.gradle.kts
+git commit -m "Release $next_version"
