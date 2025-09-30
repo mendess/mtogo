@@ -161,7 +161,7 @@ class CachedMusic(
             root.write(
                 context,
                 mimeType,
-                "${song.name}=${song.id.get()}=m.${ext}",
+                "${song.name}=${song.id.get()}=m.${if (ext == "x-matroska") "mka" else ext}",
                 audioResponse.bodyAsChannel().toInputStream()
             )
         }
