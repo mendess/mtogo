@@ -5,6 +5,7 @@ package xyz.mendess.mtogo.m.daemon
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import io.ktor.client.HttpClient
@@ -26,6 +27,7 @@ import xyz.mendess.mtogo.data.CachedMusic
 import xyz.mendess.mtogo.data.Settings
 import xyz.mendess.mtogo.util.orelse
 import xyz.mendess.mtogo.util.parcelable
+import xyz.mendess.mtogo.viewmodels.BangerId
 import xyz.mendess.mtogo.viewmodels.Playlist
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 import xyz.mendess.mtogo.viewmodels.VideoId
@@ -72,52 +74,55 @@ class MediaItems(
         caching: Boolean,
     ): MediaItem {
         return when (mediaItem) {
-            is ParcelableMediaItem.PlaylistItem -> fromVideoId(context, mediaItem.id, caching)
-            is ParcelableMediaItem.Url -> fromUrl(context, mediaItem.uri, caching)
+            is ParcelableMediaItem.YoutubeItem -> fromVideoId(mediaItem.id)
+            is ParcelableMediaItem.PlaylistItem -> fromBangerId(context, mediaItem.id, caching)
+            is ParcelableMediaItem.Url -> fromUrl(mediaItem.uri)
         }
     }
 
     suspend fun parcelableFromSearch(query: String): Result<ParcelableMediaItem> {
         return if (query.startsWith("http")) {
-            Result.success(ParcelableMediaItem.Url(Uri.parse(query)))
+            Result.success(ParcelableMediaItem.Url(query.toUri()))
         } else {
             val query = withContext(Dispatchers.IO) { URLEncoder.encode(query, "utf-8") }
             runCatching {
-                val resp = http.get("https://mendess.xyz/api/v1/playlist/search/${query}") {
+                val resp = http.get("${BuildConfig.OLD_MUSIC_BACKEND}/api/v1/playlist/search/${query}") {
                     bearerAuth(BuildConfig.BACKEND_TOKEN)
                 }
                 val id = resp.bodyAsText()
-                ParcelableMediaItem.PlaylistItem(VideoId(id))
+                ParcelableMediaItem.YoutubeItem(VideoId(id))
             }
         }
     }
 
-    private suspend fun fromVideoId(context: Context, id: VideoId, caching: Boolean): MediaItem {
+    private suspend fun fromBangerId(context: Context, id: BangerId, caching: Boolean): MediaItem {
         return playlist.await()
             .map { it.findById(id)?.let { song -> fromPlaylistSong(context, song, caching) } }
-            .getOrNull()
-            ?: run {
-                val titleUri = id.toMetadataUri()
-                val title = try {
-                    @Serializable
-                    data class Metadata(val title: String)
-
-                    val response = http.get(titleUri.toString()) {
-                        bearerAuth(BuildConfig.BACKEND_TOKEN)
-                    }
-                    JSON.decodeFromString<Metadata>(response.bodyAsText()).title
-                } catch (e: Exception) {
-                    "error getting title: ${e.message}"
-                }
-                makeMediaItem(
-                    uri = id.toAudioUri(),
-                    title = title,
-                    thumbnailUri = id.toThumbnailUri()
-                )
-            }
+            .getOrThrow()
+            ?: throw RuntimeException("failed to find $id in playlist")
     }
 
-    private suspend fun fromUrl(context: Context, uri: Uri, caching: Boolean): MediaItem {
+    private suspend fun fromVideoId(id: VideoId): MediaItem {
+        val titleUri = id.toMetadataUri()
+        val title = try {
+            @Serializable
+            data class Metadata(val title: String)
+
+            val response = http.get(titleUri.toString()) {
+                bearerAuth(BuildConfig.BACKEND_TOKEN)
+            }
+            JSON.decodeFromString<Metadata>(response.bodyAsText()).title
+        } catch (e: Exception) {
+            "error getting title: ${e.message}"
+        }
+        return makeMediaItem(
+            uri = id.toAudioUri(),
+            title = title,
+            thumbnailUri = id.toThumbnailUri()
+        )
+    }
+
+    private suspend fun fromUrl(uri: Uri): MediaItem {
         val vidId = if (uri.host?.contains(YT_SHORT_HOST) == true) {
             uri.path?.let(::VideoId)
         } else if (uri.host?.contains(YT_LONG_HOST) == true) {
@@ -129,7 +134,7 @@ class MediaItems(
         } else {
             null
         }
-        return vidId?.let { fromVideoId(context, it, caching) } ?: makeMediaItem(uri = uri)
+        return vidId?.let { fromVideoId(it) } ?: makeMediaItem(uri = uri)
     }
 
     private suspend fun fromPlaylistSong(
@@ -162,7 +167,7 @@ class MediaItems(
         val id = item
             .mediaMetadata
             .extras
-            ?.parcelable<VideoId>(MUSIC_METADATA_SHOULD_CACHE_WITH)
+            ?.parcelable<BangerId>(MUSIC_METADATA_SHOULD_CACHE_WITH)
             ?: return null
         val song = playlist.await().orelse { return null }.findById(id) ?: return null
         return cachedMusic
@@ -188,7 +193,7 @@ private fun makeMediaItem(
     uri: Uri,
     title: String? = null,
     thumbnailUri: Uri? = null,
-    shouldCacheWith: VideoId? = null,
+    shouldCacheWith: BangerId? = null,
     categories: List<String> = emptyList(),
     artist: String? = null,
     genre: String? = null,

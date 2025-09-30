@@ -9,14 +9,14 @@ import xyz.mendess.mtogo.viewmodels.Playlist
 private const val PLAYLIST = """[
     {
         "name": "Moonlight Sonata",
-        "link": "https://youtu.be/4Tr0otuiQuU",
+        "link": "https://blind-eternities.mendess.xyz/playlist/song/audio/5R6FH6kr",
         "time": 900,
         "categories": [],
         "genre": "classical"
     },
     {
         "name": "sunday school",
-        "link": "https://youtu.be/rTfa-9aCTYg",
+        "link": "https://blind-eternities.mendess.xyz/playlist/song/audio/nFHz1gAF",
         "time": 188,
         "categories": [
             "chill"
@@ -25,7 +25,7 @@ private const val PLAYLIST = """[
     },
     {
         "name": "Joji - SLOW DANCING IN THE DARK",
-        "link": "https://youtu.be/K3Qzzggn--s",
+        "link": "https://blind-eternities.mendess.xyz/playlist/song/audio/ZTpunltJ",
         "time": 217,
         "categories": [
             "chill"
@@ -35,14 +35,14 @@ private const val PLAYLIST = """[
     },
     {
         "name": "Für Elise",
-        "link": "https://youtu.be/wfF0zHeU3Zs",
+        "link": "https://blind-eternities.mendess.xyz/playlist/song/audio/u325KOYg",
         "time": 175,
         "categories": [],
         "genre": "classical"
     },
     {
         "name": "Highly Suspect - \"BATH SALTS\"",
-        "link": "https://youtu.be/VoA9tLkrgHY",
+        "link": "https://blind-eternities.mendess.xyz/playlist/song/audio/1tUfxl9q",
         "time": 171,
         "categories": [],
         "artist": "highly-suspect",
@@ -51,7 +51,7 @@ private const val PLAYLIST = """[
     },
     {
         "name": "Slow J - Ultimamente",
-        "link": "https://youtu.be/wzU-MCa3rBQ",
+        "link": "https://blind-eternities.mendess.xyz/playlist/song/audio/MoFlkE3Z",
         "time": 222,
         "categories": [
             "sad"
@@ -64,7 +64,7 @@ private const val PLAYLIST = """[
     },
     {
         "name": "Valeria Castro - lo que siento",
-        "link": "https://youtu.be/ZYg-HA6T4no",
+        "link": "https://blind-eternities.mendess.xyz/playlist/song/audio/IXFLH8bD",
         "time": 188,
         "categories": [
             "upbeat"
@@ -84,10 +84,14 @@ class PlaylistSerializationTest {
         for (s in playlist) {
             TestCase.assertTrue(
                 "${s.id} can't be the entire link",
-                !s.id.get().startsWith("https://youtu.be/"),
+                !s.id.get().startsWith("https://blind-eternities.mendess.xyz/playlist/song/audio"),
             )
         }
 
-        TestCase.assertEquals(JSON.encodeToString(playlist), PLAYLIST)
+        TestCase.assertEquals(
+            "encoding didn't match decoding",
+            JSON.encodeToString(playlist),
+            PLAYLIST
+        )
     }
 }

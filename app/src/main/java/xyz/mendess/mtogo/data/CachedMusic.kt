@@ -29,8 +29,8 @@ import xyz.mendess.mtogo.util.Ok
 import xyz.mendess.mtogo.util.orelse
 import xyz.mendess.mtogo.util.then
 import xyz.mendess.mtogo.util.withPermits
+import xyz.mendess.mtogo.viewmodels.BangerId
 import xyz.mendess.mtogo.viewmodels.Playlist
-import xyz.mendess.mtogo.viewmodels.VideoId
 import java.io.Closeable
 import java.io.InputStream
 import java.util.concurrent.Executors
@@ -98,7 +98,7 @@ class CachedMusic(
         pool.close()
     }
 
-    private fun loadById(context: Context, id: VideoId): Pair<Uri?, Uri?> {
+    private fun loadById(context: Context, id: BangerId): Pair<Uri?, Uri?> {
         val (dir, useThumbNail) = settings.cacheMusicDir.value.intoParts() ?: return null to null
         var audio: Uri? = null
         var thumb: Uri? = null

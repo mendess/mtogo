@@ -4,6 +4,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Parcel
 import android.os.Parcelable
+import xyz.mendess.mtogo.viewmodels.BangerId
 import xyz.mendess.mtogo.viewmodels.VideoId
 
 inline fun <reified T> Parcel.readObj(): T =
@@ -23,6 +24,7 @@ sealed interface ParcelableMediaItem : Parcelable {
     companion object CREATOR : Parcelable.Creator<ParcelableMediaItem> {
         override fun createFromParcel(parcel: Parcel): ParcelableMediaItem {
             return when (val name = parcel.readString()) {
+                YoutubeItem::class.simpleName -> YoutubeItem.createFromParcel(parcel)
                 PlaylistItem::class.simpleName -> PlaylistItem.createFromParcel(parcel)
                 Url::class.simpleName -> Url.createFromParcel(parcel)
                 else -> throw IllegalArgumentException("'$name' is not a valid ${this::class.simpleName} name")
@@ -33,7 +35,7 @@ sealed interface ParcelableMediaItem : Parcelable {
 
     }
 
-    data class PlaylistItem(val id: VideoId) : ParcelableMediaItem {
+    data class PlaylistItem(val id: BangerId) : ParcelableMediaItem {
         override fun writeToParcel(parcel: Parcel, flags: Int) {
             super.writeToParcel(parcel, flags)
             parcel.writeParcelable(id, flags)
@@ -44,6 +46,20 @@ sealed interface ParcelableMediaItem : Parcelable {
         companion object CREATOR : Parcelable.Creator<PlaylistItem> {
             override fun createFromParcel(parcel: Parcel) = PlaylistItem(parcel.readObj())
             override fun newArray(size: Int): Array<PlaylistItem?> = arrayOfNulls(size)
+        }
+    }
+
+    data class YoutubeItem(val id: VideoId) : ParcelableMediaItem {
+        override fun writeToParcel(parcel: Parcel, flags: Int) {
+            super.writeToParcel(parcel, flags)
+            parcel.writeParcelable(id, flags)
+        }
+
+        override fun describeContents(): Int = 0
+
+        companion object CREATOR : Parcelable.Creator<YoutubeItem> {
+            override fun createFromParcel(parcel: Parcel) = YoutubeItem(parcel.readObj())
+            override fun newArray(size: Int): Array<YoutubeItem?> = arrayOfNulls(size)
         }
     }
 

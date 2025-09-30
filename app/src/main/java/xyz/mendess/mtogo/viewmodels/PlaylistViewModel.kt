@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Parcel
 import android.os.Parcelable
+import androidx.core.net.toUri
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
@@ -152,7 +153,7 @@ class PlaylistViewModel(context: Context, default: List<Playlist.Song> = emptyLi
 
 data class Playlist(val songs: List<Song>) {
     fun findByName(query: String): Song? = songs.find { it.name == query }
-    fun findById(id: VideoId): Song? = songs.find { it.id == id }
+    fun findById(id: BangerId): Song? = songs.find { it.id == id }
 
     val categories by lazy {
         val map = HashMap<String, MutableList<Song>>()
@@ -169,7 +170,7 @@ data class Playlist(val songs: List<Song>) {
         val name: String,
 
         @SerialName("link")
-        val id: VideoId,
+        val id: BangerId,
 
         val time: Long,
         val categories: List<String>,
@@ -195,6 +196,55 @@ data class Playlist(val songs: List<Song>) {
 }
 
 @JvmInline
+@Serializable(with = BangerIdSerializer::class)
+value class BangerId(private val id: String) : Parcelable {
+    constructor(parcel: Parcel) : this(parcel.readString()!!)
+
+    fun get(): String = id
+
+    fun toAudioUri(): Uri =
+        "${BuildConfig.MUSIC_BACKEND}/playlist/song/audio/${id}".toUri()
+
+    fun toThumbnailUri(): Uri =
+        "${BuildConfig.MUSIC_BACKEND}/playlist/song/thumb/${id}".toUri()
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeString(id)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    companion object CREATOR : Parcelable.Creator<BangerId> {
+        fun fromUrl(s: String): BangerId {
+            return BangerId(URL(s).path!!.split('/').last())
+        }
+
+        override fun createFromParcel(parcel: Parcel): BangerId {
+            return BangerId(parcel)
+        }
+
+        override fun newArray(size: Int): Array<BangerId?> {
+            return arrayOfNulls(size)
+        }
+    }
+}
+
+object BangerIdSerializer : KSerializer<BangerId> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("BangerId", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: BangerId) {
+        encoder.encodeString("${BuildConfig.MUSIC_BACKEND}/playlist/song/audio/${value.get()}")
+    }
+
+    override fun deserialize(decoder: Decoder): BangerId {
+        return BangerId.fromUrl(decoder.decodeString())
+    }
+}
+
+@JvmInline
 @Serializable(with = VideoIdSerializer::class)
 value class VideoId(private val id: String) : Parcelable {
     constructor(parcel: Parcel) : this(parcel.readString()!!)
@@ -202,13 +252,13 @@ value class VideoId(private val id: String) : Parcelable {
     fun get(): String = id
 
     fun toAudioUri(): Uri =
-        Uri.parse("${BuildConfig.MUSIC_BACKEND}/api/v1/playlist/audio/${id}")
+        "${BuildConfig.OLD_MUSIC_BACKEND}/playlist/audio/${id}".toUri()
 
     fun toThumbnailUri(): Uri =
-        Uri.parse("${BuildConfig.MUSIC_BACKEND}/api/v1/playlist/thumb/${id}")
+        "${BuildConfig.OLD_MUSIC_BACKEND}/playlist/thumb/${id}".toUri()
 
     fun toMetadataUri(): Uri =
-        Uri.parse("${BuildConfig.MUSIC_BACKEND}/api/v1/playlist/metadata/${id}")
+        "${BuildConfig.OLD_MUSIC_BACKEND}/playlist/metadata/${id}".toUri()
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeString(id)
