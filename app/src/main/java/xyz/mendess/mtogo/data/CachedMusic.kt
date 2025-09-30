@@ -43,6 +43,7 @@ class CachedMusic(
     private val http: HttpClient,
     scope: CoroutineScope,
     context: Context,
+    val sendError: (Throwable) -> Unit
 ) : Closeable {
     companion object {
         val cachedFileNameRegex = "=[A-Za-z0-9_\\-]{11}=m(|art)\\.[a-z]{3,5}$".toRegex()
@@ -147,11 +148,10 @@ class CachedMusic(
             }
         }.orelse {
             withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    context,
-                    "failed to download ${song.name}: $it",
-                    Toast.LENGTH_LONG
-                ).show()
+                val msg = "failed to download ${song.name}"
+                sendError(RuntimeException(msg, it))
+                Toast.makeText(context, "$msg: ${it.message ?: it.toString()}", Toast.LENGTH_LONG)
+                    .show()
             }
             Log.i("CachedMusic", "returning 3 ${it.message}")
             return Err(it)
@@ -208,7 +208,7 @@ class CachedMusic(
             if (it.status.isSuccess()) {
                 it
             } else {
-                throw RuntimeException("request failed with code: $it")
+                throw RuntimeException("$it: request failed")
             }
         }
     }

@@ -28,6 +28,7 @@ import xyz.mendess.mtogo.data.Settings
 import xyz.mendess.mtogo.util.orelse
 import xyz.mendess.mtogo.util.parcelable
 import xyz.mendess.mtogo.viewmodels.BangerId
+import xyz.mendess.mtogo.viewmodels.ErrorsViewModel
 import xyz.mendess.mtogo.viewmodels.Playlist
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 import xyz.mendess.mtogo.viewmodels.VideoId
@@ -62,7 +63,7 @@ class MediaItems(
     private val playlist = scope.async(start = CoroutineStart.LAZY) {
         PlaylistViewModel(context).tryGet()
     }
-    private val cachedMusic = CachedMusic(settings, http, scope, context)
+    private val cachedMusic = CachedMusic(settings, http, scope, context, sendError)
 
     override fun close() {
         http.closeQuietly()
