@@ -200,7 +200,7 @@ private fun PlaylistContent(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val songs = list.songs.filter { it.name.contains(filter) }
+    val songs = list.songs.filter { it.name.lowercase().contains(filter.lowercase()) }
     Column(modifier = modifier) {
         Spacer(modifier = modifier.padding(10.dp))
         LazyColumn(modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.Center) {
@@ -232,7 +232,7 @@ private fun CategoriesContent(
     onQueue: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val categories = list.categories.filter { it.first.contains(filter) }
+    val categories = list.categories.filter { it.first.lowercase().contains(filter.lowercase()) }
     val context = LocalContext.current
     LazyColumn(modifier.padding(20.dp), verticalArrangement = Arrangement.Center) {
         if (categories.isEmpty()) {

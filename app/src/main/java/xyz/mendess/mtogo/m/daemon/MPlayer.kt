@@ -87,7 +87,7 @@ class MPlayer(
         val itemFlow = items
             .mapIndexed { i, item -> i to item }
             .asFlow()
-            .mapConcurrent(scope, size = 2U) { (i, item) ->
+            .mapConcurrent(scope, size = 8U) { (i, item) ->
                 mediaItems.fromParcelable(context, item, isAlmostEmpty && i < 2)
             }
         mediaItemQueue.send(itemFlow to oneshot)

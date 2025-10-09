@@ -28,7 +28,6 @@ import xyz.mendess.mtogo.data.Settings
 import xyz.mendess.mtogo.util.orelse
 import xyz.mendess.mtogo.util.parcelable
 import xyz.mendess.mtogo.viewmodels.BangerId
-import xyz.mendess.mtogo.viewmodels.ErrorsViewModel
 import xyz.mendess.mtogo.viewmodels.Playlist
 import xyz.mendess.mtogo.viewmodels.PlaylistViewModel
 import xyz.mendess.mtogo.viewmodels.VideoId

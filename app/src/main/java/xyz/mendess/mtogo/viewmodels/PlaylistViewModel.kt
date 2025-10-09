@@ -252,13 +252,13 @@ value class VideoId(private val id: String) : Parcelable {
     fun get(): String = id
 
     fun toAudioUri(): Uri =
-        "${BuildConfig.OLD_MUSIC_BACKEND}/playlist/audio/${id}".toUri()
+        "${BuildConfig.OLD_MUSIC_BACKEND}/api/v1/playlist/audio/${id}".toUri()
 
     fun toThumbnailUri(): Uri =
-        "${BuildConfig.OLD_MUSIC_BACKEND}/playlist/thumb/${id}".toUri()
+        "${BuildConfig.OLD_MUSIC_BACKEND}/api/v1/playlist/thumb/${id}".toUri()
 
     fun toMetadataUri(): Uri =
-        "${BuildConfig.OLD_MUSIC_BACKEND}/playlist/metadata/${id}".toUri()
+        "${BuildConfig.OLD_MUSIC_BACKEND}/api/v1/playlist/metadata/${id}".toUri()
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeString(id)

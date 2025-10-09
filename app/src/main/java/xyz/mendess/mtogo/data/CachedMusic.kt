@@ -46,7 +46,7 @@ class CachedMusic(
     val sendError: (Throwable) -> Unit
 ) : Closeable {
     companion object {
-        val cachedFileNameRegex = "=[A-Za-z0-9_\\-]{11}=m(|art)\\.[a-z]{3,5}$".toRegex()
+        val cachedFileNameRegex = "=([A-Za-z0-9]{8})=m(|art)\\.[a-z]{3,5}$".toRegex()
         private val cachedDownloadingFileNameRegex =
             "=[A-Za-z0-9_\\-]{11}=m(|art)\\.[a-z]{3,5}.downloading".toRegex()
     }
@@ -99,18 +99,59 @@ class CachedMusic(
         pool.close()
     }
 
+    data class FsCacheEntry(val audio: Uri?, val thumb: Uri?)
+
+    private fun FsCacheEntry?.merge(other: FsCacheEntry) = if (this == null) other
+    else FsCacheEntry(this.audio ?: other.audio, this.thumb ?: other.thumb)
+
+    private val fsCache = HashMap<BangerId, FsCacheEntry>()
+
+    private fun prepareFsCache(context: Context) {
+        val (dir, _) = settings.cacheMusicDir.value.intoParts() ?: return
+        for (f in DocumentFile.fromTreeUri(context, dir)!!.listFiles()) {
+            if (f.isDirectory) continue
+            val name = f.name ?: continue
+            val isAudio = name.contains("=m.")
+            val isThumb = name.contains("=mart.")
+            cachedFileNameRegex.findAll(name).firstOrNull()?.let { match -> match.groups[0] }
+                ?.let { group ->
+                    val newId = BangerId(group.value)
+                    val cacheEntry = fsCache[newId]
+                    fsCache[newId] = cacheEntry.merge(
+                        if (isAudio) {
+                            FsCacheEntry(f.uri, null)
+                        } else if (isThumb) {
+                            FsCacheEntry(null, f.uri)
+                        } else {
+                            throw NotImplementedError("unreachable")
+                        }
+                    )
+                }
+        }
+    }
+
     private fun loadById(context: Context, id: BangerId): Pair<Uri?, Uri?> {
         val (dir, useThumbNail) = settings.cacheMusicDir.value.intoParts() ?: return null to null
+        if (fsCache.isEmpty()) {
+            prepareFsCache(context)
+        }
+        Log.i("CachedMusic", "fs cache size: ${fsCache.size}")
+        fsCache[id]?.let {
+            Log.i("CachedMusic", "fs cache saved a lookup")
+            return it.audio to it.thumb
+        }
         var audio: Uri? = null
         var thumb: Uri? = null
         for (f in DocumentFile.fromTreeUri(context, dir)!!.listFiles()) {
             if (audio != null && if (useThumbNail) thumb != null else true) break
             if (f.isDirectory) continue
             val name = f.name ?: continue
+            val isAudio = name.contains("=m.")
+            val isThumb = name.contains("=mart.")
             if (name.contains(id.get())) {
-                if (name.contains("=m.")) {
+                if (isAudio) {
                     audio = f.uri
-                } else if (name.contains("=mart.")) {
+                } else if (isThumb) {
                     thumb = f.uri
                 }
             }
@@ -126,11 +167,11 @@ class CachedMusic(
         Log.i("CachedMusic", "storeByVideoId ${song.name}")
         val (musicDirUri, useThumb) = settings.cacheMusicDir.value.intoParts()
             ?: return Ok(null).also {
-                Log.i("CachedMusic", "returning 1")
+                Log.i("CachedMusic", "cache dir disabled")
             }
         val root = DocumentFile.fromTreeUri(context, musicDirUri) ?: run {
             return Ok(null).also {
-                Log.i("CachedMusic", "returning 2")
+                Log.i("CachedMusic", "failed to read cache dir")
             }
         }
 
@@ -153,7 +194,7 @@ class CachedMusic(
                 Toast.makeText(context, "$msg: ${it.message ?: it.toString()}", Toast.LENGTH_LONG)
                     .show()
             }
-            Log.i("CachedMusic", "returning 3 ${it.message}")
+            Log.i("CachedMusic", "failed to download ${it.message}")
             return Err(it)
         }
 
@@ -174,9 +215,12 @@ class CachedMusic(
             )
         } ?: preCachedThumb
 
-        return Ok(if (audioUri != null) Item(audioUri, thumbUri) else null).also {
-            Log.i("CachedMusic", "returning 4 $it")
-        }
+        return Ok((if (audioUri != null) Item(audioUri, thumbUri) else null).also {
+            if (it?.audio != null) {
+                fsCache[song.id] = FsCacheEntry(it.audio, it.thumb)
+            }
+            Log.i("CachedMusic", "success? $it")
+        })
     }
 
     private fun DocumentFile.write(
