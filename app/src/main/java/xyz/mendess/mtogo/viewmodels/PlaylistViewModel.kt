@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -43,7 +42,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNames
 import m_to_go.app.BuildConfig
 import xyz.mendess.mtogo.util.dataStore
 import java.net.URL
@@ -59,6 +57,8 @@ sealed interface PlaylistLoadingState {
     data class Success(val playlist: Playlist) : PlaylistLoadingState
     data class Error(val throwable: Throwable) : PlaylistLoadingState
 }
+
+private val JSON = Json { ignoreUnknownKeys = true }
 
 class PlaylistViewModel(context: Context, default: List<Playlist.Song> = emptyList()) :
     ViewModel() {
@@ -125,7 +125,7 @@ class PlaylistViewModel(context: Context, default: List<Playlist.Song> = emptyLi
                 }.body<ArrayList<Playlist.Song>>()
                 viewModelScope.launch {
                     dataStore.edit { preferences ->
-                        preferences[SAVED_STATE_PLAYLIST] = Json.encodeToString(playlist)
+                        preferences[SAVED_STATE_PLAYLIST] = JSON.encodeToString(playlist)
                     }
                 }
                 playlist.reverse()
@@ -135,7 +135,7 @@ class PlaylistViewModel(context: Context, default: List<Playlist.Song> = emptyLi
                     .data
                     .map { preferences -> preferences[SAVED_STATE_PLAYLIST] }
                     .first()
-                    ?.let { Json.decodeFromString(it) }
+                    ?.let { Playlist(JSON.decodeFromString<List<Playlist.Song>>(it)) }
                     ?: throw e
             }
         }
@@ -166,7 +166,7 @@ data class Playlist(val songs: List<Song>) {
     }
 
     @Serializable
-    data class Song @OptIn(ExperimentalSerializationApi::class) constructor(
+    data class Song(
         val name: String,
 
         @SerialName("link")
@@ -175,19 +175,18 @@ data class Playlist(val songs: List<Song>) {
         val time: Long,
         val categories: List<String>,
         val artist: String? = null,
-        val genre: String? = null,
+        val genres: List<String> = listOf(),
         val language: String? = null,
 
         @SerialName("liked_by")
         val likedBy: List<String> = listOf(),
 
-        @JsonNames("recomended_by")
         @SerialName("recommended_by")
         val recommendedBy: String? = null,
     ) {
         fun allCategories() = categories.asSequence()
             .plusElement(artist)
-            .plusElement(genre)
+            .plus(genres)
             .plusElement(language)
             .plus(likedBy)
             .plusElement(recommendedBy)

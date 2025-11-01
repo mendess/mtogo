@@ -156,7 +156,7 @@ class MediaItems(
             categories = song.categories,
             shouldCacheWith = song.id,
             artist = song.artist,
-            genre = song.genre,
+            genres = song.genres,
             language = song.language,
             likedBy = song.likedBy,
             recommendedBy = song.recommendedBy
@@ -183,7 +183,7 @@ fun CachedMusic.Item.toMediaItemOf(song: Playlist.Song): MediaItem = makeMediaIt
     title = song.name,
     categories = song.categories.toList(),
     artist = song.artist,
-    genre = song.genre,
+    genres = song.genres,
     language = song.language,
     likedBy = song.likedBy,
     recommendedBy = song.recommendedBy
@@ -196,7 +196,7 @@ private fun makeMediaItem(
     shouldCacheWith: BangerId? = null,
     categories: List<String> = emptyList(),
     artist: String? = null,
-    genre: String? = null,
+    genres: List<String> = emptyList(),
     language: String? = null,
     likedBy: List<String> = emptyList(),
     recommendedBy: String? = null,
@@ -209,7 +209,7 @@ private fun makeMediaItem(
                 setArtist(artist)
                 setAlbumArtist(artist)
             }
-            if (genre != null) setGenre(genre)
+            if (genres.isNotEmpty()) setGenre(genres.first())
             if (thumbnailUri != null) setArtworkUri(thumbnailUri)
             setExtras(Bundle().apply {
                 if (shouldCacheWith != null) putParcelable(
