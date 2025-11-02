@@ -6,6 +6,7 @@ package xyz.mendess.mtogo.data
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -66,7 +67,7 @@ class Settings(context: Context, private val scope: CoroutineScope) {
             domain
                 .zip(token) { domain, token ->
                     if (domain != null && token != null) Credentials(
-                        Uri.parse(domain),
+                        domain.toUri(),
                         token
                     ) else null
                 }

@@ -32,6 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat.startActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mendess.mtogo.R
 import qrcode.QRCode
@@ -75,15 +77,38 @@ fun SettingsScreen(
     modifier: Modifier
 ) {
     val currentCredentials by viewModel.credentials.collectAsStateWithLifecycle()
+    val newVersionAvailable by viewModel.newVersionAvailableState.collectAsStateWithLifecycle()
+    val ctx = LocalContext.current
 
     Scaffold(
         bottomBar = {
             Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text(
-                    "version: ${viewModel.appVersion}",
-                    fontWeight = FontWeight.Light,
-                    fontStyle = FontStyle.Italic
-                )
+                if (newVersionAvailable != viewModel.appVersion) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val browserIntent =
+                                        Intent(Intent.ACTION_VIEW, viewModel.newVersionUrl)
+                                    startActivity(ctx, browserIntent, null)
+                                },
+                        ) {
+                            Text(viewModel.appVersion)
+                            Text("Click to update to $newVersionAvailable")
+                        }
+                    }
+                } else {
+                    Text(
+                        viewModel.appVersion,
+                        fontWeight = FontWeight.Light,
+                        fontStyle = FontStyle.Italic,
+                    )
+                }
             }
         }
     )

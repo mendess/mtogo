@@ -3,6 +3,8 @@ package xyz.mendess.mtogo.viewmodels
 import android.app.Application
 import android.content.Context
 import android.net.Uri
+import android.util.Log
+import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -11,20 +13,27 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import m_to_go.app.BuildConfig
 import okhttp3.internal.closeQuietly
 import xyz.mendess.mtogo.data.CachedMusic
 import xyz.mendess.mtogo.data.Settings
@@ -61,7 +70,9 @@ class SettingsViewModel private constructor(
     context: Context,
     private val hostname: String,
 ) : ViewModel() {
-    val http = HttpClient(CIO)
+    val http = HttpClient(CIO) {
+        install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+    }
     val settings = Settings(context, scope = viewModelScope)
 
     val credentials get() = settings.credentials
@@ -87,13 +98,35 @@ class SettingsViewModel private constructor(
         }
         .stateIn(viewModelScope, initialValue = null, started = SharingStarted.Eagerly)
 
+    val newVersionUrl = "${BuildConfig.MUSIC_BACKEND}/playlist/mtogo/download".toUri()
+
+    val newVersionAvailableState: StateFlow<String> get() = _newVersionAvailableState
+    private val _newVersionAvailableState: MutableStateFlow<String> = MutableStateFlow(appVersion)
+
+    init {
+        viewModelScope.launch {
+            _newVersionAvailableState.value = runCatching {
+                @Serializable
+                data class Version(val version: String)
+
+                val version =
+                    http.get("${BuildConfig.MUSIC_BACKEND}/playlist/mtogo/version").body<Version>()
+
+                version.version
+            }.getOrElse {
+                Log.e("Mtogo.SettingsViewModel", "failed to get latest version info: $it")
+                appVersion
+            }
+        }
+    }
+
     suspend fun newMusicSession(credentials: Credentials): Result<Pair<Uri, String>?> =
         runCatching {
             val session = http.get("${credentials.uri}/admin/music-session/$hostname") {
                 bearerAuth(credentials.token.toString())
             }
             val id = Json.decodeFromString<String>(session.bodyAsText())
-            Uri.parse("https://planar-bridge.mendess.xyz/music?session=$id") to id
+            "https://planar-bridge.mendess.xyz/music?session=$id".toUri() to id
         }
 
     override fun onCleared() {

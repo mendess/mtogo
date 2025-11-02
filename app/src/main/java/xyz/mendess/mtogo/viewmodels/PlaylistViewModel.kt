@@ -47,8 +47,7 @@ import xyz.mendess.mtogo.util.dataStore
 import java.net.URL
 import kotlin.time.Duration.Companion.seconds
 
-private const val PLAYLIST_URL =
-    "https://raw.githubusercontent.com/mendess/spell-book/master/runes/m/playlist.json"
+private const val PLAYLIST_URL = "${BuildConfig.MUSIC_BACKEND}/playlist"
 
 private val SAVED_STATE_PLAYLIST = stringPreferencesKey("playlist-cache")
 
