@@ -18,9 +18,10 @@ sed -E -i "s/versionName = \"[^\"]+/versionName = \"$next_version/" ./app/build.
 
 cp -v ./app/build/outputs/apk/release/app-release.apk /tmp/mtogo.apk
 
-share /tmp/mtogo.apk
+spark rsync av /tmp/mtogo.apk pendrellvale:vault/basement/blind-eternities/music/mtogo
 
 rm -v /tmp/mtogo.apk
 
 git add ./app/build.gradle.kts
 git commit -m "Release $next_version"
+git push
