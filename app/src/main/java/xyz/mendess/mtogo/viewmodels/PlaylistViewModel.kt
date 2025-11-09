@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Parcel
 import android.os.Parcelable
+import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -59,7 +60,7 @@ sealed interface PlaylistLoadingState {
 
 private val JSON = Json { ignoreUnknownKeys = true }
 
-class PlaylistViewModel(context: Context, default: List<Playlist.Song> = emptyList()) :
+class PlaylistViewModel(val context: Context, default: List<Playlist.Song> = emptyList()) :
     ViewModel() {
     private val dataStore = context.dataStore
 
@@ -80,7 +81,7 @@ class PlaylistViewModel(context: Context, default: List<Playlist.Song> = emptyLi
                 HttpClient(CIO) {
                     install(HttpTimeout)
                     install(ContentNegotiation) {
-                        json()
+                        json(JSON)
                         register(ContentType.Text.Plain, KotlinxSerializationConverter(Json))
                     }
                 }.use { http ->
@@ -130,6 +131,7 @@ class PlaylistViewModel(context: Context, default: List<Playlist.Song> = emptyLi
                 playlist.reverse()
                 Playlist(playlist)
             } catch (e: Exception) {
+                Toast.makeText(context, "Failed to fetch playlist ${e.message}", Toast.LENGTH_LONG)
                 dataStore
                     .data
                     .map { preferences -> preferences[SAVED_STATE_PLAYLIST] }
