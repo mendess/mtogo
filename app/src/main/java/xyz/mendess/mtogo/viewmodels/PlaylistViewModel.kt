@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Parcel
 import android.os.Parcelable
+import android.util.Log
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.datastore.preferences.core.edit
@@ -45,6 +46,7 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import m_to_go.app.BuildConfig
 import xyz.mendess.mtogo.util.dataStore
+import xyz.mendess.mtogo.util.ret
 import java.net.URL
 import kotlin.time.Duration.Companion.seconds
 
@@ -82,10 +84,18 @@ class PlaylistViewModel(val context: Context, default: List<Playlist.Song> = emp
                     install(HttpTimeout)
                     install(ContentNegotiation) {
                         json(JSON)
-                        register(ContentType.Text.Plain, KotlinxSerializationConverter(Json))
+                        register(ContentType.Text.Plain, KotlinxSerializationConverter(JSON))
                     }
                 }.use { http ->
-                    while (_playlistFlow.value !is PlaylistLoadingState.Success) {
+                    if (_playlistFlow.value !is PlaylistLoadingState.Success) {
+                        val cached = loadCached()
+                        cached.onSuccess {
+                            if (it != null) {
+                                _playlistFlow.value = PlaylistLoadingState.Success(it)
+                            }
+                        }
+                    }
+                    do {
                         _playlistFlow.value = fetchPlaylist(http)
                             .fold(
                                 onSuccess = PlaylistLoadingState::Success,
@@ -93,7 +103,7 @@ class PlaylistViewModel(val context: Context, default: List<Playlist.Song> = emp
                             )
 
                         delay(1.seconds)
-                    }
+                    } while (_playlistFlow.value !is PlaylistLoadingState.Success)
                 }
             }
         }
@@ -123,6 +133,7 @@ class PlaylistViewModel(val context: Context, default: List<Playlist.Song> = emp
                         this.socketTimeoutMillis = 11_000L
                     }
                 }.body<ArrayList<Playlist.Song>>()
+                Log.i("Mtogo.PlaylistViewModel", "downloaded playlist. Length: " + playlist.size)
                 viewModelScope.launch {
                     dataStore.edit { preferences ->
                         preferences[SAVED_STATE_PLAYLIST] = JSON.encodeToString(playlist)
@@ -131,14 +142,21 @@ class PlaylistViewModel(val context: Context, default: List<Playlist.Song> = emp
                 playlist.reverse()
                 Playlist(playlist)
             } catch (e: Exception) {
+                Log.i("Mtogo.PlaylistViewModel", "failed to fetch playlist: " + e.message)
                 Toast.makeText(context, "Failed to fetch playlist ${e.message}", Toast.LENGTH_LONG)
-                dataStore
-                    .data
-                    .map { preferences -> preferences[SAVED_STATE_PLAYLIST] }
-                    .first()
-                    ?.let { Playlist(JSON.decodeFromString<List<Playlist.Song>>(it)) }
-                    ?: throw e
+                    .show()
+                loadCached().ret { return it } ?: throw e
             }
+        }
+    }
+
+    private suspend fun loadCached(): Result<Playlist?> {
+        return runCatching {
+            dataStore
+                .data
+                .map { preferences -> preferences[SAVED_STATE_PLAYLIST] }
+                .first()
+                ?.let { Playlist(JSON.decodeFromString<List<Playlist.Song>>(it)) }
         }
     }
 
